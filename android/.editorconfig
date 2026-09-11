@@ -1,0 +1,7 @@
+root = true
+
+[*.{kt,kts}]
+# @Composable functions are conventionally PascalCase (they're treated like
+# a UI element, not a regular function) — this is standard Compose style,
+# not a naming mistake.
+ktlint_function_naming_ignore_when_annotated_with = Composable

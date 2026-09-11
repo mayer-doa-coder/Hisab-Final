@@ -6,7 +6,9 @@ import androidx.core.os.LocaleListCompat
 /**
  * The two languages the app ships in. Bangla is the default (D009).
  */
-enum class AppLanguage(val tag: String) {
+enum class AppLanguage(
+    val tag: String,
+) {
     BANGLA("bn"),
     ENGLISH("en"),
     ;
