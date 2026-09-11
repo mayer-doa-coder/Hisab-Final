@@ -187,3 +187,10 @@ Rule of thumb: if the Room entity, the JSON sent over the wire, and the Postgres
 Rejected: D023's `Room entity ↔ mapper ↔ domain model ↔ mapper ↔ API DTO ↔ backend domain ↔ PostgreSQL row` chain, as the default for everything.
 
 Reason: D023's underlying concern is real — Android-only sync fields shouldn't reach the server schema, and server-only audit fields shouldn't reach the UI. But that is a problem to solve when it appears, with one mapper at the one place it appears. Declaring two mapper layers before a single entity exists is exactly the over-building `CLAUDE.md` warns against ("add structure when a real second use case shows up, not before"), and it makes every feature more code to read and more code to ship — which works against the low-resource goal (RQ2). D023 still applies as the *reason to watch that boundary*; it is no longer a required chain for every entity.
+
+---
+
+## D027 — Auth Storage and Password Hashing for Steps 11–12
+Decision: Users, shops, and sessions are held in an in-memory store for now, seeded with a couple of demo accounts — not PostgreSQL. Passwords are hashed with Node's built-in `crypto.scrypt` (salted), not a third-party library. Session tokens are opaque random bytes, checked against an in-memory map — not JWTs.
+Reason: PostgreSQL wiring belongs to M1 (`docs/PHASE_GUIDE.md` Step 23, "Postgres arrives with the real endpoints") — there is no entity yet that needs it. Building migrations and a connection pool now, before Product exists, is exactly the ahead-of-need structure `CLAUDE.md` warns against. `crypto.scrypt` and opaque tokens use only what Node already ships, matching D006's "keep dependencies minimal" — a real password-hashing library (argon2/bcrypt) or JWT library can replace these later if a real need shows up, but scrypt already satisfies "secure password hashing" (`PRD.md` §19.4) without adding one.
+Caveat: this is scoped to Steps 11–12 only. Full hardening — token rotation, expiry, rate limiting, a real user store — is still M7, per D015.

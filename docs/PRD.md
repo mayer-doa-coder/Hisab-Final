@@ -688,6 +688,8 @@ Value-type conventions used throughout this model (full reasoning: `../DECISIONS
 - id
 - shop_id
 - role
+- email
+- password_hash
 
 ## Product
 

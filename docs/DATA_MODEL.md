@@ -20,6 +20,8 @@ The minimum set of tables Hisab needs. Full detail: `PRD.md`, section 24.
 - id
 - shop_id
 - role
+- email
+- password_hash
 
 ## Product
 - id

@@ -34,11 +34,19 @@ This sync foundation (client-generated IDs, outbox, push, pull) is built once, s
 ## Mutable Entities Need a Conflict Rule
 Product and Customer, unlike the ledgers above, can be edited in place — and can be edited on two offline devices at once. Each carries a `revision`; a write must include the revision it edited from, and a write against a stale revision is rejected rather than silently overwritten. Deletes are tombstones (`deleted_at`), not row removal. Full policy: `../DECISIONS.md` D017.
 
-## Layering: Room, Domain Model, API DTO, Postgres Are Not One Shape
+## Layering: Three Folders on Android, Two on the Server
 ```text
-Room entity ↔ mapper ↔ domain model ↔ mapper ↔ API DTO ↔ backend domain ↔ PostgreSQL row
+Android                          Server
+  ui/      screens              domain/          the same rules, same words
+  domain/  the rules            modules/<name>/  routes + database for one feature
+  data/    database + network
 ```
-They represent the same concept but not the same fields — Android-only sync/local state shouldn't leak into the server schema, and server-only fields shouldn't leak into the UI model. See `../DECISIONS.md` D023.
+
+One shape for a concept, used end to end. If the Room entity, the JSON on the wire, and the Postgres row hold the same fields, use the same shape — no mapper. Write a mapper the day two of them actually differ, at that one boundary only.
+
+Which way things point: `ui/` uses `domain/` and `data/`; `data/` uses `domain/`; `domain/` uses nothing. So the rules never depend on the screen or the database, which is what keeps them easy to test.
+
+See `../DECISIONS.md` D026 (which replaces D023's longer mapper chain — that was more structure than this needs). D023's concern still stands as the reason to watch that boundary: Android-only sync state shouldn't reach the server schema, and server-only audit fields shouldn't reach the UI.
 
 ## Security Boundaries
 - The backend derives which shop a request belongs to from the authenticated session — it never trusts a shop_id supplied by the client. This exists from the first endpoint, not only after later hardening. See `../DECISIONS.md` D015.
