@@ -169,3 +169,21 @@ Decision: Hisab's Android app targets `minSdk = 26` (Android 8.0, Oreo). `compil
 Research behind this (per D022 — chosen from data, not guessed): StatCounter's Bangladesh mobile-OS breakdown (August 2026) shows Android 11 and newer at a combined 85.5% (Android 13: 17.4%, 15: 15.1%, 11: 14.0%, 12: 14.0%, 16: 13.4%, 14: 11.6%). The remaining ~14.5% is Android 10-and-older plus StatCounter's usual "Unknown"/bot-traffic noise — the page's chart is JS-rendered, so the exact tail split (how much is real Android 8–10 devices vs. noise) wasn't extractable from a static fetch. API 26 was chosen over a lower floor (e.g. API 21/24) to capture that Android 8–10 tail — plausible among budget/older phones in active retail use — without carrying legacy-API constraints for versions with negligible real share. Our per-app language mechanism (D014, AndroidX `AppCompatDelegate`) works down to API 21 regardless, so it did not force this floor.
 Caveat: this is national aggregate data, not a survey of actual pilot shopkeepers' phones. If real device data from pilot shops later contradicts this (e.g. a meaningful cluster on Android 7 or below), revisit with a new decision entry — don't silently lower minSdk.
 Sources: [StatCounter — Android Version Market Share, Bangladesh, Mobile](https://gs.statcounter.com/android-version-market-share/mobile/bangladesh); [Android Developers — Meet Google Play's target API level requirement](https://developer.android.com/google/play/requirements/target-sdk).
+
+---
+
+## D026 — Simpler Layering for the MVP (supersedes D023's mapper chain)
+Decision: Three folders on Android, two on the server. One shape for a concept, used end to end — a mapper is added only at a boundary where the shapes genuinely differ, not by default.
+
+```text
+Android                          Server
+  ui/      screens              domain/          the same rules, same words
+  domain/  the rules            modules/<name>/  routes + database for one feature
+  data/    database + network
+```
+
+Rule of thumb: if the Room entity, the JSON sent over the wire, and the Postgres row all hold the same fields, use the same shape and skip the mapper. Write a mapper the day they actually diverge, at that one boundary only.
+
+Rejected: D023's `Room entity ↔ mapper ↔ domain model ↔ mapper ↔ API DTO ↔ backend domain ↔ PostgreSQL row` chain, as the default for everything.
+
+Reason: D023's underlying concern is real — Android-only sync fields shouldn't reach the server schema, and server-only audit fields shouldn't reach the UI. But that is a problem to solve when it appears, with one mapper at the one place it appears. Declaring two mapper layers before a single entity exists is exactly the over-building `CLAUDE.md` warns against ("add structure when a real second use case shows up, not before"), and it makes every feature more code to read and more code to ship — which works against the low-resource goal (RQ2). D023 still applies as the *reason to watch that boundary*; it is no longer a required chain for every entity.

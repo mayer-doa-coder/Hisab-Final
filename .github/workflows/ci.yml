@@ -37,6 +37,12 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v6
 
+      # This repo is developed on Windows, where git has core.fileMode=false
+      # and drops the executable bit. Without this, ./gradlew fails on the
+      # Linux runner with "Permission denied".
+      - name: Make gradlew executable
+        run: chmod +x gradlew
+
       # "Android compile" — Step 4
       - name: Compile
         run: ./gradlew compileDebugKotlin

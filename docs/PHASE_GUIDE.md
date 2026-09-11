@@ -86,11 +86,20 @@ Full reasoning: `../DECISIONS.md` D017, D018. Check: you can explain why Sale/St
 
 ## Step 7 — Write down the layering rule
 
+Keep it small. Three folders on Android, two on the server:
+
 ```text
-Room entity ↔ mapper ↔ domain model ↔ mapper ↔ API DTO ↔ backend domain ↔ PostgreSQL row
+Android                          Server
+  ui/      screens              domain/          the same rules, same words
+  domain/  the rules            modules/<name>/  routes + database for one feature
+  data/    database + network
 ```
 
-These don't have to be the same shape. Full reasoning: `../DECISIONS.md` D023. Check: you know where a mapper goes before you write your first entity in M1.
+One shape for a concept, used end to end. If the Room entity, the JSON on the wire, and the Postgres row hold the same fields, use the same shape — no mapper. Write a mapper the day two of them actually differ, at that one boundary only.
+
+Full reasoning: `../DECISIONS.md` D026 (which replaces D023's longer mapper chain — that was more structure than an MVP needs).
+
+Check: you can name the three Android folders and say what goes in each, without looking.
 
 ## Step 8 — Add Bangla and English string resources
 
