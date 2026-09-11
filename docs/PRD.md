@@ -632,7 +632,7 @@ Recommended production stack:
 
 Dependencies must be kept deliberately minimal.
 
-minSdk is chosen from research into real target-user devices, then frozen (`../DECISIONS.md` D022) — not picked by guesswork.
+minSdk = 26 (Android 8.0), compileSdk = targetSdk = 36 (Android 16). Chosen from research into real target-user devices, then frozen (`../DECISIONS.md` D022, D025) — not picked by guesswork.
 
 Room database schemas are exported, versioned, and committed to the repository from the first schema onward; every schema change has a migration and a migration test in CI. Destructive migrations are never used against production user data.
 

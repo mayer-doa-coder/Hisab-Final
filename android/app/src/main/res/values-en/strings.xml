@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- English. Bangla (the default) lives in values/strings.xml.
+     Keys must stay in sync with that file — scripts/check-localization.sh enforces it. -->
+<resources>
+    <string name="app_name">Hisab</string>
+    <string name="welcome_title">Welcome to Hisab</string>
+    <string name="welcome_subtitle">A simple way to keep your shop\'s accounts.</string>
+    <string name="setup_note">This is the starting screen. Work is still in progress.</string>
+    <string name="action_change_language">Change language</string>
+</resources>

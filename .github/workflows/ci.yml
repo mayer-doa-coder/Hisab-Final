@@ -1,0 +1,81 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  android:
+    name: Android
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: android
+    steps:
+      - uses: actions/checkout@v7
+
+      # Bangla and English string keys must match — Step 10.
+      - name: Localization completeness
+        working-directory: .
+        run: ./scripts/check-localization.sh
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+
+      - name: Install SDK platform and build-tools
+        # Versions pinned to match DECISIONS.md D025 (compileSdk 36).
+        run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
+
+      - uses: gradle/actions/setup-gradle@v6
+
+      # "Android compile" — Step 4
+      - name: Compile
+        run: ./gradlew compileDebugKotlin
+
+      # "Android unit tests" — Step 4
+      - name: Unit tests
+        run: ./gradlew testDebugUnitTest
+
+      # "Lint" — Step 4 (AGP's built-in lint + Spotless code style)
+      - name: Lint
+        run: ./gradlew lintDebug spotlessCheck
+
+  server:
+    name: Server
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+
+      - run: npm ci
+
+      # "Server compile" — Step 4
+      - name: Compile
+        run: npm run build
+
+      # "Server unit tests" — Step 4
+      - name: Unit tests
+        run: npm test
+
+      # "Lint" — Step 4 (ESLint + Prettier)
+      - name: Lint
+        run: npm run lint
+
+      - name: Format check
+        run: npm run format:check

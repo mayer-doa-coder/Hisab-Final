@@ -161,3 +161,11 @@ Reason: They represent the same domain concept but don't need to store the same 
 ## D024 — Backup Is Not the Same Thing as Sync
 Decision: Synchronization and backup are treated as separate concerns with separate guarantees. Sync propagates every change — including an accidental deletion — to every device. A real backup must allow restoring shop data to an earlier point in time, independent of what has since synced.
 Reason: If sync is the only safety net, a mistaken bulk-delete or bad migration propagates everywhere and there is nothing to recover from. See `PRD.md` section 20 and `docs/PHASE_GUIDE.md` M4/M7/M9 for where backup-related work happens.
+
+---
+
+## D025 — minSdk Frozen at API 26 (Android 8.0)
+Decision: Hisab's Android app targets `minSdk = 26` (Android 8.0, Oreo). `compileSdk = targetSdk = 36` (Android 16), the current Google-Play-required target as of the August 2026 deadline.
+Research behind this (per D022 — chosen from data, not guessed): StatCounter's Bangladesh mobile-OS breakdown (August 2026) shows Android 11 and newer at a combined 85.5% (Android 13: 17.4%, 15: 15.1%, 11: 14.0%, 12: 14.0%, 16: 13.4%, 14: 11.6%). The remaining ~14.5% is Android 10-and-older plus StatCounter's usual "Unknown"/bot-traffic noise — the page's chart is JS-rendered, so the exact tail split (how much is real Android 8–10 devices vs. noise) wasn't extractable from a static fetch. API 26 was chosen over a lower floor (e.g. API 21/24) to capture that Android 8–10 tail — plausible among budget/older phones in active retail use — without carrying legacy-API constraints for versions with negligible real share. Our per-app language mechanism (D014, AndroidX `AppCompatDelegate`) works down to API 21 regardless, so it did not force this floor.
+Caveat: this is national aggregate data, not a survey of actual pilot shopkeepers' phones. If real device data from pilot shops later contradicts this (e.g. a meaningful cluster on Android 7 or below), revisit with a new decision entry — don't silently lower minSdk.
+Sources: [StatCounter — Android Version Market Share, Bangladesh, Mobile](https://gs.statcounter.com/android-version-market-share/mobile/bangladesh); [Android Developers — Meet Google Play's target API level requirement](https://developer.android.com/google/play/requirements/target-sdk).

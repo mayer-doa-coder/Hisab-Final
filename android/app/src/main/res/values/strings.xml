@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Bangla is the default resource set (D009/D014). English lives in values-en/.
+     Every key here must also exist there, unless marked translatable="false". -->
+<resources>
+    <string name="app_name">হিসাব</string>
+    <string name="welcome_title">হিসাবে স্বাগতম</string>
+    <string name="welcome_subtitle">আপনার দোকানের হিসাব রাখার সহজ অ্যাপ।</string>
+    <string name="setup_note">এটি শুরুর স্ক্রিন। কাজ এখনো চলছে।</string>
+    <string name="action_change_language">ভাষা পরিবর্তন করুন</string>
+
+    <!-- Language names always appear in their own script, in every locale. -->
+    <string name="language_bangla" translatable="false">বাংলা</string>
+    <string name="language_english" translatable="false">English</string>
+</resources>

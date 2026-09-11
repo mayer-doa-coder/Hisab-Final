@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Ledger-page mark: a page with entry lines. Vector-only so no PNG density
+     buckets are needed (minSdk 26 supports adaptive icons everywhere). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M34,28h40a4,4 0 0 1 4,4v44a4,4 0 0 1 -4,4h-40a4,4 0 0 1 -4,-4v-44a4,4 0 0 1 4,-4z" />
+    <path
+        android:fillColor="#1B5E20"
+        android:pathData="M39,41h22v4h-22z" />
+    <path
+        android:fillColor="#1B5E20"
+        android:pathData="M39,52h30v4h-30z" />
+    <path
+        android:fillColor="#1B5E20"
+        android:pathData="M39,63h16v4h-16z" />
+</vector>
