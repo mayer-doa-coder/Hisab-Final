@@ -1,16 +1,31 @@
 # Current Phase
 
-M0 — Setup (Steps 1–22)
+M1 — Product (Steps 23–34)
 
-Steps 1–22 all verified locally. One check is left, and only a push can do it: CI green on GitHub for these changes (Step 22).
+Steps 23–27 are built. M0 (Steps 1–22) is finished and verified locally; its one remaining check needs a push: CI green on GitHub.
 
 `docs/PHASE_GUIDE.md` has the exact steps, in order, each with its own check. This file just tracks which step you're on — the step list itself lives in one place only, so don't copy it here.
 
 ## Objective
-Build the skeleton on both sides, including the specific things that are expensive to retrofit later: Bangla-first localization, minimal authentication with server-derived tenant identity, and the real sync foundation (contract + plumbing, not a throwaway version). Full reasoning: `DECISIONS.md` D014–D024.
+Build Product end to end — local table, screens, then the backend and sync wiring — as the first real feature to flow through the M0 sync foundation.
 
 ## Current Step
-Step 22, last check — push these changes and confirm the CI run is green (`gh run list --limit 1`). Also confirm the server job's "Unit tests" step now reports 68 tests, not 21. Then M0 is done, and the next step is M1, Step 23.
+Step 28 — check the whole local Product flow (add, edit, search) in airplane mode.
+
+Two checks are still owed from earlier steps:
+- Push, then confirm CI is green and that the server job's "Unit tests" step reports 68 tests, not 21 (Step 22).
+- Re-run `connectedDebugAndroidTest` for the Product tests: the phone went into "unauthorized" USB-debugging state before they could run (Steps 23–27).
+
+## M1 — Product, done so far
+- Steps 23–24 — `product` table in Room (`data/product/`), reached only through `ProductRepository`, which owns the rules: device-made id (D018), revision starting at 1, a stale-revision write rejected instead of applied (D017), deletion as a tombstone, and aliases trimmed and de-duplicated. Database version 2 with a hand-written migration (no destructive fallback), matching the exported schema exactly.
+- Step 25 — Product list screen, reading the database as a live query, so a write appears by itself.
+- Step 26 — Add/Edit screen: name, other names, unit, selling price, optional purchase price, plus deactivate/reactivate and delete. Saving writes locally and returns; nothing waits on a network.
+- Step 27 — search over name and aliases, in the same query that lists products.
+- Design: claymorphism, written once in `ui/theme/` and used by every screen (D029).
+- Money: integer poisha throughout; shown in the digits of the language on screen (১২.৫০ / 12.50) and typed in either.
+- Fonts: app labels take the language's font; anything the shopkeeper typed is split per script, per word, so "চিনি 1kg" renders each part in its own font — including while typing (D010).
+
+## M0 — Setup, done
 
 Done so far:
 - Step 1 — repo folders created (`android/`, `server/`, `research/`, `scripts/`, `.github/`, plus `CONTRIBUTING.md` and `CHANGELOG.md`).
@@ -71,17 +86,17 @@ Done so far:
   - **CI now builds the real APK** (`assembleDebug`) and compiles the on-phone tests, instead of only compiling Kotlin.
 
 ## Allowed Right Now
-Anything in M0 (Steps 1–22 of `docs/PHASE_GUIDE.md`) — Bangla/English setup, minimal auth, the sync foundation, domain conventions, device/minSdk research, the research data plan, one screen, one endpoint.
+Anything in M1 (Steps 23–34 of `docs/PHASE_GUIDE.md`) — the Product table and screens, Product in Postgres, the product endpoints, and wiring Product saves and loads through the sync endpoints from M0.
 
 ## Not Allowed Right Now
-- Real product features (Product, Sale, Baki, etc.) — that's M1 (Step 23 onward), right after this.
-- Full security hardening (rate limiting, token rotation, threat testing) — that's M7. M0 only needs the minimum auth so nothing later is built on a trust hole.
+- Sale, Stock, Baki and the rest — those are M2 onward.
+- Full security hardening (rate limiting, token rotation, threat testing) — still M7.
 
-## Definition of Done for M0
-Every check in Steps 1–22 passes — see `docs/PHASE_GUIDE.md` for each one individually.
+## Definition of Done for M1
+Every check in Steps 23–34 passes — see `docs/PHASE_GUIDE.md` for each one individually.
 
 ## Next
-Once Step 22 checks out, M1 — Product (Step 23 onward): build the Product feature end-to-end, the first feature to actually flow through the sync foundation built here.
+Step 28 (airplane mode), then the backend half: Product in Postgres (29), the product endpoints (30), schema/migration checks in CI (31), and Product through push, pull and conflict (32–34).
 
 ## Update This File
 Move "Current Step" forward as each step is checked off. Update the M-number at the top once a milestone finishes. This file always answers "what step am I on, right now" — the how lives in `docs/PHASE_GUIDE.md`.

@@ -7,4 +7,51 @@
     <string name="welcome_subtitle">A simple way to keep your shop\'s accounts.</string>
     <string name="setup_note">This is the starting screen. Work is still in progress.</string>
     <string name="action_change_language">Change language</string>
+
+    <!-- Product (M1) -->
+    <string name="products_title">Products</string>
+    <string name="products_open">View products</string>
+    <string name="product_add_title">New product</string>
+    <string name="product_edit_title">Edit product</string>
+    <string name="product_search_hint">Search by name or other name</string>
+    <string name="product_show_inactive">Show inactive too</string>
+    <string name="product_empty_title">No products yet</string>
+    <string name="product_empty_subtitle">Tap the button below to add your first product.</string>
+    <string name="product_search_empty">No product found with that name.</string>
+    <string name="product_name_label">Product name</string>
+    <string name="product_name_hint">For example: Sugar</string>
+    <string name="product_aliases_label">Other names (separate with commas)</string>
+    <string name="product_aliases_hint">For example: chini, sugar</string>
+    <string name="product_unit_label">Unit</string>
+    <string name="product_selling_price_label">Selling price</string>
+    <string name="product_purchase_price_label">Purchase price (optional)</string>
+    <string name="product_inactive_badge">Inactive</string>
+    <string name="product_price_sell_short">Sell</string>
+    <string name="product_price_buy_short">Buy</string>
+    <string name="product_conflict_message">This product changed somewhere else. Go back and open it again.</string>
+    <string name="product_loading">Loading…</string>
+
+    <string name="error_name_required">Enter a name</string>
+    <string name="error_selling_price_required">Enter a selling price</string>
+    <string name="error_price_invalid">Enter a valid number</string>
+
+    <string name="action_save">Save</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_delete">Delete</string>
+    <string name="action_deactivate">Deactivate</string>
+    <string name="action_activate">Activate</string>
+
+    <string name="confirm_delete_title">Delete this product?</string>
+    <string name="confirm_delete_message">It will be removed from the list. Past sales records do not change.</string>
+
+    <string name="cd_back">Go back</string>
+    <string name="cd_clear_search">Clear search</string>
+
+    <string name="unit_piece">Piece</string>
+    <string name="unit_kg">kg</string>
+    <string name="unit_gram">gram</string>
+    <string name="unit_litre">Litre</string>
+    <string name="unit_packet">Packet</string>
+    <string name="unit_bottle">Bottle</string>
+    <string name="unit_dozen">Dozen</string>
 </resources>

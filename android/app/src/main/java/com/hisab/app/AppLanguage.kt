@@ -1,5 +1,6 @@
 package com.hisab.app
 
+import androidx.annotation.VisibleForTesting
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.os.LocaleListCompat
 
@@ -41,6 +42,29 @@ fun pinBanglaOnFirstRun() {
     if (AppCompatDelegate.getApplicationLocales().isEmpty) {
         setAppLanguage(AppLanguage.BANGLA)
     }
+}
+
+private var firstRunPinDone = false
+
+/**
+ * The same thing, but at most once per app start.
+ *
+ * Pinning restarts the Activity, whose onCreate would pin again if the stored
+ * language is not readable back yet. That is a loop, and on a slow phone it
+ * could spin for a long time — one was seen running for 16 minutes in a test
+ * at Step 23. Doing it once per process ends the loop by construction: the
+ * choice is stored, and the next app start reads it normally.
+ */
+fun pinBanglaOnFirstRunOnce() {
+    if (firstRunPinDone) return
+    firstRunPinDone = true
+    pinBanglaOnFirstRun()
+}
+
+/** Lets a test act as if the app had just started. Not used by the app itself. */
+@VisibleForTesting
+fun resetFirstRunPinForTest() {
+    firstRunPinDone = false
 }
 
 /**

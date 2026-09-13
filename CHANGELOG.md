@@ -35,5 +35,14 @@ Versions use semantic versioning. The first public research release will be `v1.
   - the four "newer version available" checks, which change over time on their own, are turned off (Step 20).
 - Kept `mipmap-anydpi-v26`: renaming it to `mipmap-anydpi`, as lint suggests, breaks the build with AGP 9.4, so that one warning is ignored in `android/app/lint.xml` (Step 20).
 
+### Added (M1 — Product, Steps 23–27)
+- `product` table in Room (database version 2, with a hand-written migration and the exported schema committed), reached only through `ProductRepository`: device-generated id (D018), revision from 1 upward, stale-revision writes rejected (D017), deletion as a tombstone, aliases trimmed and de-duplicated (Steps 23–24).
+- Product list screen reading the local database as a live query, with search over names and aliases in the same query (Steps 25, 27).
+- Add/Edit product screen — name, other names, unit, selling price, optional purchase price, deactivate/reactivate, delete with confirmation. Saves locally with no network call in the path (Step 26).
+- Claymorphism design system in `ui/theme/` — `ClayCard`, `ClayButton`, `ClayChip`, `ClayTextField`, `ClayText` (`DECISIONS.md` D029).
+- Money typed and shown in either Bangla or English digits, always stored as integer poisha (`domain/MoneyFormat.kt`).
+- Per-script fonts extended to text the user typed: `scriptAwareText` splits a string word by word, so "চিনি 1kg" renders each part in its own font, including inside text fields (D010).
+- Tests: 34 new unit tests (money parsing/formatting, form validation, script splitting) and 4 new instrumented test classes (DAO, repository, the 1→2 migration, and the product screens end to end).
+
 ### Added (Step 20)
 - `HomeScreenTest` (on-phone): opens in Bangla even on an English phone, the language button switches both ways, and the choice survives closing and reopening the app. 13 on-phone tests total, 0 failures.

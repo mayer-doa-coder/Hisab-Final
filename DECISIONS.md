@@ -258,3 +258,20 @@ Sources:
 - [GSMArena — Tecno Spark Go 2](https://m.gsmarena.com/tecno_spark_go_2-13975.php)
 - [GSMArena — Redmi A5](https://www.gsmarena.com/xiaomi_redmi_a5_4g-13737.php)
 - [GSMArena — Google's minimum RAM/storage rules for Android 15 (15 Apr 2025)](https://www.gsmarena.com/here_are_googles_new_minimum_ram_and_storage_requirements_for_android_phones-news-67387.php)
+
+---
+
+## D029 — Claymorphism as the Look of Every Screen
+Decision: Hisab's screens use one claymorphism design language, written once in `android/app/src/main/java/com/hisab/app/ui/theme/` and used everywhere: a soft lilac ground, thick rounded surfaces (26 dp cards, 22 dp buttons, 20 dp fields), a coloured shadow below with a pale edge above, inputs that look pressed into the surface rather than raised, and buttons that shrink slightly and lose shadow depth when touched. A screen does not style itself; it uses `ClayCard`, `ClayButton`, `ClayChip`, `ClayTextField` and `ClayText`.
+
+Reason: a single small set of components keeps every screen consistent without a UI library, and makes a shop-facing app look finished rather than like a form. It is built from Compose primitives only — no new dependency, matching D006.
+
+Rules that override the look wherever they clash:
+- Text is dark ink on light surfaces, never pale-on-pale. Cheap phone screens in daylight are the target (D028), so decoration stays on surfaces, never on words or numbers.
+- Tap targets are at least 54 dp high.
+- Fonts still follow D010: app labels take the current language's font, and anything the shopkeeper typed is split per script by `scriptAwareText`, so "চিনি Sugar" renders each half in its own font — including inside text fields, through `ScriptAwareVisualTransformation`.
+- Money is shown in the digits of the language on screen (১২.৫০ in Bangla, 12.50 in English), always built from integer poisha.
+
+Inspiration came from tactile/soft-button component examples on 21st.dev. No code was copied: those are React and Tailwind, and this app is Jetpack Compose — only the visual idea carried over.
+
+Not decided here: dark mode. The app is light-only for now; a dark palette would need its own entry.

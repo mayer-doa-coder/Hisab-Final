@@ -42,6 +42,12 @@ android {
         compose = true
     }
 
+    // The exported Room schemas ship with the instrumented tests, so a
+    // migration test can check the real schema of each version.
+    sourceSets {
+        getByName("androidTest").assets.srcDir("$projectDir/schemas")
+    }
+
     lint {
         // These four only say "a newer version exists". Their answer changes
         // over time with no change to this code, so they would make lint
@@ -65,8 +71,11 @@ ksp {
 }
 
 dependencies {
+    // Version alignment only, no code: see the note in libs.versions.toml.
+    implementation(platform(libs.kotlinx.serialization.bom))
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.appcompat)
     implementation(platform(libs.androidx.compose.bom))

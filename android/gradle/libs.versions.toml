@@ -12,10 +12,18 @@ espressoCore = "3.7.0"
 spotless = "8.10.2"
 ksp = "2.3.12"
 room = "2.8.5"
+# Only to settle a version clash: lifecycle pulls kotlinx-serialization 1.7.3,
+# Room 2.8.5's schema bundles need 1.8.1, and Gradle's consistent resolution
+# pushed 1.7.3 into the test classpath — where the migration test then died
+# with AbstractMethodError. The BOM lines both up.
+kotlinxSerialization = "1.8.1"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycleRuntimeKtx" }
+# Screen state that survives the Activity being recreated — which happens on
+# every language switch (D014), not just on rotation.
+androidx-lifecycle-viewmodel-compose = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-compose", version.ref = "lifecycleRuntimeKtx" }
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
 # Needed for per-app language switching below API 33 (D014).
 androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
@@ -34,6 +42,7 @@ androidx-room-runtime = { group = "androidx.room", name = "room-runtime", versio
 androidx-room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
 androidx-room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room" }
 androidx-room-testing = { group = "androidx.room", name = "room-testing", version.ref = "room" }
+kotlinx-serialization-bom = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-bom", version.ref = "kotlinxSerialization" }
 
 [plugins]
 # No kotlin-android plugin: AGP 9's built-in Kotlin support replaces it.

@@ -11,4 +11,54 @@
     <!-- Language names always appear in their own script, in every locale. -->
     <string name="language_bangla" translatable="false">বাংলা</string>
     <string name="language_english" translatable="false">English</string>
+
+    <!-- Taka sign: the same symbol in both languages. -->
+    <string name="currency_symbol" translatable="false">৳</string>
+
+    <!-- Product (M1) -->
+    <string name="products_title">পণ্য</string>
+    <string name="products_open">পণ্য দেখুন</string>
+    <string name="product_add_title">নতুন পণ্য</string>
+    <string name="product_edit_title">পণ্য সম্পাদনা</string>
+    <string name="product_search_hint">নাম বা ডাকনাম দিয়ে খুঁজুন</string>
+    <string name="product_show_inactive">নিষ্ক্রিয় পণ্যও দেখুন</string>
+    <string name="product_empty_title">এখনো কোনো পণ্য নেই</string>
+    <string name="product_empty_subtitle">নিচের বোতাম চেপে প্রথম পণ্যটি যোগ করুন।</string>
+    <string name="product_search_empty">এই নামে কোনো পণ্য পাওয়া যায়নি।</string>
+    <string name="product_name_label">পণ্যের নাম</string>
+    <string name="product_name_hint">যেমন: চিনি</string>
+    <string name="product_aliases_label">অন্য নাম (কমা দিয়ে আলাদা করুন)</string>
+    <string name="product_aliases_hint">যেমন: chini, sugar</string>
+    <string name="product_unit_label">একক</string>
+    <string name="product_selling_price_label">বিক্রয় মূল্য</string>
+    <string name="product_purchase_price_label">ক্রয় মূল্য (ঐচ্ছিক)</string>
+    <string name="product_inactive_badge">নিষ্ক্রিয়</string>
+    <string name="product_price_sell_short">বিক্রয়</string>
+    <string name="product_price_buy_short">ক্রয়</string>
+    <string name="product_conflict_message">এই পণ্যটি অন্য কোথাও বদলে গেছে। ফিরে গিয়ে আবার খুলুন।</string>
+    <string name="product_loading">লোড হচ্ছে…</string>
+
+    <string name="error_name_required">নাম লিখুন</string>
+    <string name="error_selling_price_required">বিক্রয় মূল্য লিখুন</string>
+    <string name="error_price_invalid">সঠিক সংখ্যা লিখুন</string>
+
+    <string name="action_save">সংরক্ষণ করুন</string>
+    <string name="action_cancel">বাতিল</string>
+    <string name="action_delete">মুছে ফেলুন</string>
+    <string name="action_deactivate">নিষ্ক্রিয় করুন</string>
+    <string name="action_activate">সক্রিয় করুন</string>
+
+    <string name="confirm_delete_title">পণ্যটি মুছে ফেলবেন?</string>
+    <string name="confirm_delete_message">এটি তালিকা থেকে সরে যাবে। পুরোনো বিক্রির হিসাব বদলাবে না।</string>
+
+    <string name="cd_back">ফিরে যান</string>
+    <string name="cd_clear_search">খোঁজা মুছুন</string>
+
+    <string name="unit_piece">পিস</string>
+    <string name="unit_kg">কেজি</string>
+    <string name="unit_gram">গ্রাম</string>
+    <string name="unit_litre">লিটার</string>
+    <string name="unit_packet">প্যাকেট</string>
+    <string name="unit_bottle">বোতল</string>
+    <string name="unit_dozen">ডজন</string>
 </resources>
