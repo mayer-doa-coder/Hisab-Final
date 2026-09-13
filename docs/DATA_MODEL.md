@@ -88,6 +88,7 @@ Current baki for a customer = sum of all their BakiEntry.amount_delta values.
 - operation
 - payload
 - base_revision (for updates/deletes of Product or Customer — see D017)
+- client_timestamp
 - status
 - retry_count
 

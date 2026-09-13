@@ -3,6 +3,9 @@
 Room database and network calls live here — see `docs/ARCHITECTURE.md` and
 `DECISIONS.md` D026.
 
-Empty until M1 (Step 23), where the Product entity, its DAO, and the calls to
-the backend land here. `domain/` holds the rules; this layer only stores and
-fetches.
+`sync/` (Steps 13-14): `SyncOutboxEntity`/`SyncOutboxDao` and
+`SyncMetadataEntity`/`SyncMetadataDao` — the local tables every feature's
+sync writes to, once a feature exists to write. Nothing writes to them yet;
+Product's DAO (M1, Step 23) is the first real writer.
+
+`domain/` holds the rules; this layer only stores and fetches.

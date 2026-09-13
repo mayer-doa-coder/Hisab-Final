@@ -759,6 +759,7 @@ Value-type conventions used throughout this model (full reasoning: `../DECISIONS
 - operation
 - payload
 - base_revision (for updates/deletes of mutable entities; see D017)
+- client_timestamp
 - status
 - retry_count
 

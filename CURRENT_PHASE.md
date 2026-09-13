@@ -2,7 +2,7 @@
 
 M0 — Setup (Steps 1–22)
 
-In progress — Steps 1–12 and 20 checked off. Remaining: 13–19, 21, 22.
+In progress — Steps 1–15 and 20 checked off. Remaining: 16–19, 21, 22.
 
 `docs/PHASE_GUIDE.md` has the exact steps, in order, each with its own check. This file just tracks which step you're on — the step list itself lives in one place only, so don't copy it here.
 
@@ -10,7 +10,7 @@ In progress — Steps 1–12 and 20 checked off. Remaining: 13–19, 21, 22.
 Build the skeleton on both sides, including the specific things that are expensive to retrofit later: Bangla-first localization, minimal authentication with server-derived tenant identity, and the real sync foundation (contract + plumbing, not a throwaway version). Full reasoning: `DECISIONS.md` D014–D024.
 
 ## Current Step
-Step 13 — Create the SyncOutbox and SyncMetadata tables (Android-local; no writes to them yet). Steps 18–19 are the device/minSdk and research-data decisions — D025 already covers minSdk.
+Step 16 — Build the pull endpoint (GET /sync/changes?after=<cursor>). Steps 18–19 are the device/minSdk and research-data decisions — D025 already covers minSdk.
 
 Done so far:
 - Step 1 — repo folders created (`android/`, `server/`, `research/`, `scripts/`, `.github/`, plus `CONTRIBUTING.md` and `CHANGELOG.md`).
@@ -28,6 +28,12 @@ Done so far:
 - Step 10 — `scripts/check-localization.sh`, wired into CI. Enforces Bangla as primary, not just key parity: fails on a Bangla key with no English, an English key with no Bangla original (backwards for this project), an empty Bangla string, and a `values-bn/` folder (Bangla belongs in the default `values/`). Ignores commented-out strings. All five paths tested by deliberately breaking each one.
 - Steps 11–12 — `server/src/modules/auth/`: `POST /auth/login` (email + password → session token, `crypto.scrypt` hashing, constant-time compare) and a `requireAuth` preHandler that every protected route uses. `GET /auth/me` proves it: shop_id always comes from the token, never a client-supplied field (D015) — verified by passing `?shop_id=shop-2` alongside a shop-1 token and confirming shop-1's data still comes back, on both the test suite and a real running server via curl. Users/shops are in-memory for now, seeded with two demo accounts (D027) — Postgres arrives with real entities in M1, not before.
   - One real bug caught and fixed: `requireAuth` was declared as a plain 2-argument sync function returning `void`, which is neither of Fastify's two valid preHandler shapes (`async (request, reply)` or `(request, reply, done)`). It silently hung forever on the success path — reproduced against a real running server with `curl`, not just in tests, before fixing it to `async`.
+- Steps 13–15 — the sync foundation, first half.
+  - Step 14 (envelope shape): `server/src/domain/syncEvent.ts` defines eventId, entityType, entityId, operation, payload, baseRevision, clientTimestamp. `SyncOutboxEntity` on Android mirrors it field-for-field (D026: one shape, no mapper needed since nothing diverges).
+  - Step 15 (push endpoint): `POST /sync/push` behind `requireAuth` (extracted into its own `requireAuth.ts` once sync needed the same guard as auth did — D026, a real second use case showing up). An in-memory processed-event log makes it idempotent per D004 — pushing the same eventId twice, in two separate requests, only applies it once. Verified in the test suite (46 server tests total, 0 failures) and against a real running server via curl.
+  - Step 13 (local tables): `SyncOutboxEntity`/`SyncOutboxDao` and `SyncMetadataEntity`/`SyncMetadataDao` (Room, in `data/sync/`), added via KSP 2.3.12 with Room 2.8.5 — first Room setup in this project. Schema exported to `android/app/schemas/` per PRD section 22. **Verified on a real physical phone** (Samsung Galaxy A15, Android 16), not just compiled: 9 instrumented tests, 0 failures. Covers the unique-eventId constraint, insertion order, status filtering, update, delete, and a real file-backed database that survives a close/reopen with data intact.
+    - Two real bugs, caught only by actually running the tests on hardware, fixed in order: (1) a test method used an expression body ending in a call that returns `Boolean`, so Kotlin inferred the method's return type as `Boolean` instead of `Unit` — JUnit 4 requires `void`, so the test failed to even load until the return type was declared explicitly. (2) that same test then asserted the database was open immediately after being built, but Room opens its connection lazily, so the flag is genuinely false until a real query happens — the assertion was moved to after the first insert, where it's actually true.
+  - A device-connection detour along the way: an Android emulator halted mid-boot twice and was abandoned in favor of the physical phone, which needed a full adb server restart to clear a stuck "unauthorized" state before it would accept the RSA debugging key.
 
 ## Allowed Right Now
 Anything in M0 (Steps 1–22 of `docs/PHASE_GUIDE.md`) — Bangla/English setup, minimal auth, the sync foundation, domain conventions, device/minSdk research, the research data plan, one screen, one endpoint.
