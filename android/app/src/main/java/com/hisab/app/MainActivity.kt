@@ -12,6 +12,12 @@ import com.hisab.app.ui.HomeScreen
 class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Must come after super.onCreate — see pinBanglaOnFirstRun. On the very
+        // first launch this redraws the screen once, in Bangla; after that it
+        // does nothing.
+        pinBanglaOnFirstRun()
+
         setContent {
             MaterialTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {

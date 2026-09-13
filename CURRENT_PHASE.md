@@ -2,7 +2,7 @@
 
 M0 — Setup (Steps 1–22)
 
-In progress — Steps 1–20 checked off. Remaining: 21, 22.
+Steps 1–22 all verified locally. One check is left, and only a push can do it: CI green on GitHub for these changes (Step 22).
 
 `docs/PHASE_GUIDE.md` has the exact steps, in order, each with its own check. This file just tracks which step you're on — the step list itself lives in one place only, so don't copy it here.
 
@@ -10,7 +10,7 @@ In progress — Steps 1–20 checked off. Remaining: 21, 22.
 Build the skeleton on both sides, including the specific things that are expensive to retrofit later: Bangla-first localization, minimal authentication with server-derived tenant identity, and the real sync foundation (contract + plumbing, not a throwaway version). Full reasoning: `DECISIONS.md` D014–D024.
 
 ## Current Step
-Step 21 — Build one backend health-check endpoint, behind the login from Steps 11–12. Step 22 (clean-machine check) is next after that.
+Step 22, last check — push these changes and confirm the CI run is green (`gh run list --limit 1`). Also confirm the server job's "Unit tests" step now reports 68 tests, not 21. Then M0 is done, and the next step is M1, Step 23.
 
 Done so far:
 - Step 1 — repo folders created (`android/`, `server/`, `research/`, `scripts/`, `.github/`, plus `CONTRIBUTING.md` and `CHANGELOG.md`).
@@ -24,7 +24,7 @@ Done so far:
 - Step 6 — IDs and conflict rule: `generateId()` (built-in UUID, no dependency) and the stale-revision write check.
 - Step 7 — layering, deliberately kept small (D026, which replaces D023's longer mapper chain): Android is `ui/` + `domain/` + `data/`, server is `domain/` + `modules/<name>/`. One shape end to end; a mapper only where shapes actually differ. `HomeScreen` moved into `ui/` so the structure is real rather than aspirational.
 - Step 8 — Bangla string resources in the default `values/`, English in `values-en/`.
-- Step 9 — language switching via AndroidX `AppCompatDelegate` (D014, not a custom mechanism). Bangla is pinned on first run in `HisabApplication` so the phone's own language never decides it. Persists via `AppLocalesMetadataHolderService` below API 33 and `localeConfig` on 33+.
+- Step 9 — language switching via AndroidX `AppCompatDelegate` (D014, not a custom mechanism). Bangla is pinned on first run so the phone's own language never decides it (now done in `MainActivity.onCreate` — see Step 20 below for why `HisabApplication` couldn't do it). Persists via `AppLocalesMetadataHolderService` below API 33 and `localeConfig` on 33+.
 - Step 10 — `scripts/check-localization.sh`, wired into CI. Enforces Bangla as primary, not just key parity: fails on a Bangla key with no English, an English key with no Bangla original (backwards for this project), an empty Bangla string, and a `values-bn/` folder (Bangla belongs in the default `values/`). Ignores commented-out strings. All five paths tested by deliberately breaking each one.
 - Steps 11–12 — `server/src/modules/auth/`: `POST /auth/login` (email + password → session token, `crypto.scrypt` hashing, constant-time compare) and a `requireAuth` preHandler that every protected route uses. `GET /auth/me` proves it: shop_id always comes from the token, never a client-supplied field (D015) — verified by passing `?shop_id=shop-2` alongside a shop-1 token and confirming shop-1's data still comes back, on both the test suite and a real running server via curl. Users/shops are in-memory for now, seeded with two demo accounts (D027) — Postgres arrives with real entities in M1, not before.
   - One real bug caught and fixed: `requireAuth` was declared as a plain 2-argument sync function returning `void`, which is neither of Fastify's two valid preHandler shapes (`async (request, reply)` or `(request, reply, done)`). It silently hung forever on the success path — reproduced against a real running server with `curl`, not just in tests, before fixing it to `async`.
@@ -57,6 +57,18 @@ Done so far:
   - the consent form and withdrawal;
   - the pilot device record;
   - dataset versioning, and deleting raw exports 12 months after release.
+- Step 20 — the home screen opens in Bangla and switches to English and back. **Verified on the real phone** (Galaxy A15, Android 16, phone language set to English), after a full uninstall and fresh install: opens in Bangla → tap English → English → close and reopen, still English → tap বাংলা → Bangla → reopen, still Bangla. No crashes. Screenshots confirm Noto Sans Bengali for Bangla and Merriweather for English.
+  - Real bug found and fixed: Bangla was pinned in `HisabApplication.onCreate`, where AppCompat's language API silently does nothing on Android 13+ (no Activity exists yet), so a new install on an English phone would have opened in English. Now pinned in `MainActivity.onCreate`; the empty Application class was removed.
+  - The bug was found by the new `HomeScreenTest` (4 on-phone tests), which now guards it. The full on-phone suite is 13 tests, 0 failures, read from the result XML — not just "BUILD SUCCESSFUL".
+  - Lint is now "No issues found": the unused "Change language" string is shown as a label, and `localeConfig` is marked Android 13+. Four time-dependent "newer version exists" checks are off, because they change on their own without any code change. Renaming `mipmap-anydpi-v26` as lint suggested broke the build (verified with a clean build), so it's kept and ignored in `android/app/lint.xml`.
+- Step 21 — `GET /health` behind `requireAuth`. No token → 401 `AUTH_INVALID`; fake token → 401; real token without "Bearer " → 401; real token → 200 `{"status":"ok"}`. 4 tests, plus the same checked against a real running server with curl.
+- Step 22 — clean-machine check.
+  - **README was missing the instructions.** It had no install/build/run steps at all, so this check couldn't pass. Added "Run It Yourself": what to install, server steps with curl examples, Android build steps, phone steps, and what CI runs.
+  - **Checked on a fresh copy** containing only the files git would give a new checkout (no `node_modules`, no `build/`, no `local.properties`), following only the README:
+    - Server, with an empty npm cache: install, build, 68 tests / 0 failures, lint, format, start, `/` and `/health` with and without a token.
+    - Android, with an empty Gradle folder (Gradle 9.6 and JDK 17 downloaded by themselves): localization check, APK built, 21 unit tests / 0 failures, lint "No issues found", Spotless, on-phone tests compile.
+  - **Real CI bug found and fixed.** GitHub CI had been silently running only 21 of the 64 server tests. On Linux, `sh` expands the unquoted `dist/**/*.test.js` only one folder deep, so every auth, sync, and root-endpoint test was skipped while CI showed green. Confirmed from the actual CI log of the last green run ("tests 21"). The pattern is now quoted so Node expands it: 68 tests run under `sh` on both Node 22 (CI's version) and Node 24.
+  - **CI now builds the real APK** (`assembleDebug`) and compiles the on-phone tests, instead of only compiling Kotlin.
 
 ## Allowed Right Now
 Anything in M0 (Steps 1–22 of `docs/PHASE_GUIDE.md`) — Bangla/English setup, minimal auth, the sync foundation, domain conventions, device/minSdk research, the research data plan, one screen, one endpoint.

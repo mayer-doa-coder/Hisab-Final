@@ -22,3 +22,18 @@ Versions use semantic versioning. The first public research release will be `v1.
 - `DECISIONS.md` D028: `minSdk = 26` frozen permanently (98.04% of Bangladesh Android page views in August 2026 run Android 8.0+), and the low-end reference device frozen as Tecno Spark Go 2 (3 GB RAM + 64 GB eMMC 5.1, Unisoc T7250, Android 15). Evidence CSVs saved in `research/performance/device-research/` (Step 18).
 - Research data plan made concrete in `docs/RESEARCH_PLAN.md`: who may write held-out sentences, writer instructions, minimum sizes, annotation fields, a second labeler on 20%, a hash-sealed freeze, forecasting sources and anonymization, stockout-day marking, consent form contents, withdrawal, pilot device record, and dataset versioning (Step 19).
 - `docs/PHASE_GUIDE.md`: Step 107 now also checks the app runs on an Android 8.0 (API 26) system image; Step 114's research layout adds `/suggestions`.
+- `GET /health` behind `requireAuth`: 401 `AUTH_INVALID` without a valid token, 200 `{"status":"ok"}` with one (Step 21).
+- `README.md` "Run It Yourself": what to install, and how to build, test, and run the server and the Android app, including on a real phone (Step 22).
+
+### Fixed
+- CI was silently running only 21 of the server's 64 tests. The unquoted test pattern `dist/**/*.test.js` in `server/package.json` was expanded by Linux `sh` only one folder deep, so the auth, sync, and root-endpoint tests never ran in CI. The pattern is now quoted so Node expands it; verified on Node 22 (CI's version) and Node 24 (Step 22).
+- CI now builds the installable APK (`assembleDebug`) and compiles the on-phone tests, instead of only compiling Kotlin (Step 22).
+- A new install could open in English on an English phone. "Pin Bangla on first run" ran in `Application.onCreate`, where AppCompat's language API silently does nothing on Android 13+ (no Activity exists yet). It now runs in `MainActivity.onCreate`, and the empty `HisabApplication` class was removed. Found by the new `HomeScreenTest` on a real Android 16 phone, and confirmed fixed by a fresh uninstall/install there (Step 20).
+- Lint now reports "No issues found":
+  - the "Change language" label is actually shown on the home screen;
+  - `localeConfig` is marked as Android 13+ only;
+  - the four "newer version available" checks, which change over time on their own, are turned off (Step 20).
+- Kept `mipmap-anydpi-v26`: renaming it to `mipmap-anydpi`, as lint suggests, breaks the build with AGP 9.4, so that one warning is ignored in `android/app/lint.xml` (Step 20).
+
+### Added (Step 20)
+- `HomeScreenTest` (on-phone): opens in Bangla even on an English phone, the language button switches both ways, and the choice survives closing and reopening the app. 13 on-phone tests total, 0 failures.

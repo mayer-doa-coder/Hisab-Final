@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<lint>
+    <!-- Lint says the -v26 is unnecessary because minSdk is 26, and suggests
+         mipmap-anydpi instead. Tried at Step 20: with AGP 9.4, a clean build then
+         fails with "resource mipmap/ic_launcher not found" — the renamed folder
+         never reaches the merged resources. So the working name stays. -->
+    <issue id="ObsoleteSdkInt">
+        <ignore path="src/main/res/mipmap-anydpi-v26" />
+    </issue>
+</lint>

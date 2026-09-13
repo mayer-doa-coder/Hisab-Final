@@ -27,6 +27,23 @@ fun currentAppLanguage(): AppLanguage {
 }
 
 /**
+ * On the very first launch nothing is stored yet, and Android would otherwise
+ * fall back to the phone's language — which would show English on an English
+ * phone. Bangla is the default (D009), so pin it explicitly. Does nothing once
+ * a language has been chosen.
+ *
+ * Call it from an Activity's onCreate, after super.onCreate. AppCompat's
+ * language API needs a live Activity: called from Application.onCreate it
+ * silently did nothing on a real Android 16 phone, so a new install opened in
+ * English (found by HomeScreenTest at Step 20).
+ */
+fun pinBanglaOnFirstRun() {
+    if (AppCompatDelegate.getApplicationLocales().isEmpty) {
+        setAppLanguage(AppLanguage.BANGLA)
+    }
+}
+
+/**
  * Switching languages via AppCompat (not a hand-rolled mechanism — D014), which
  * persists the choice and applies it on the next launch.
  */

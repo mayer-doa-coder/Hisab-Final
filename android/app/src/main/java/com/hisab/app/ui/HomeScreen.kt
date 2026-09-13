@@ -55,9 +55,16 @@ fun HomeScreen(
                 textAlign = TextAlign.Center,
                 modifier = Modifier.padding(top = 24.dp),
             )
+            Text(
+                text = stringResource(R.string.action_change_language),
+                fontFamily = font,
+                fontSize = 14.sp,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(top = 32.dp),
+            )
             Button(
                 onClick = { onChangeLanguage(otherLanguage) },
-                modifier = Modifier.padding(top = 32.dp),
+                modifier = Modifier.padding(top = 8.dp),
             ) {
                 // The button names the language you'd switch to, written in its
                 // own script — so it takes that language's font, not the

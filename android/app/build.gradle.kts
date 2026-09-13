@@ -8,8 +8,9 @@ plugins {
 android {
     namespace = "com.hisab.app"
     // compileSdk/targetSdk 36 (Android 16) and minSdk 26 (Android 8.0) are
-    // frozen values, not defaults — see DECISIONS.md D025 for the research
-    // behind them. Do not change without a new decision entry.
+    // frozen values, not defaults — see DECISIONS.md D025 and D028 for the
+    // research behind them. minSdk is frozen permanently (D028); targetSdk
+    // rises only when Google Play requires it, via a new decision entry.
     compileSdk = 36
 
     defaultConfig {
@@ -39,6 +40,20 @@ android {
 
     buildFeatures {
         compose = true
+    }
+
+    lint {
+        // These four only say "a newer version exists". Their answer changes
+        // over time with no change to this code, so they would make lint
+        // output drift on its own. Versions here are pinned on purpose
+        // (D025, D028) and upgraded deliberately, not whenever one is released.
+        disable +=
+            setOf(
+                "GradleDependency",
+                "NewerVersionAvailable",
+                "AndroidGradlePluginVersion",
+                "OldTargetApi",
+            )
     }
 }
 
