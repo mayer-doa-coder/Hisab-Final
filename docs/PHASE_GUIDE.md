@@ -147,7 +147,7 @@ A push that edits Product or Customer with a stale `base_revision` is rejected w
 
 ## Step 18 — Research target devices and freeze minSdk
 
-Look into what Android versions, RAM, and chipsets are common among small-shop owners in Bangladesh. Pick and write down: minSdk, and one specific low-end reference device (model, Android version, RAM, SoC, storage). Full reasoning: `../DECISIONS.md` D022. Check: the choice is written down somewhere in the repo, not just remembered.
+Look into what Android versions, RAM, and chipsets are common among small-shop owners in Bangladesh. Pick and write down: minSdk, and one specific low-end reference device (model, Android version, RAM, SoC, storage). Full reasoning: `../DECISIONS.md` D022. Result: `../DECISIONS.md` D028 — minSdk 26 frozen permanently; reference device Tecno Spark Go 2 (3 GB + 64 GB). Check: the choice is written down somewhere in the repo, not just remembered.
 
 ## Step 19 — Write the research data plan
 
@@ -577,7 +577,7 @@ Check: test coverage for each area, not just the happy path.
 
 ## Step 101 — Measure resource use on the low-end reference device
 
-App size, installed size, cold/warm start, RAM, local-save latency, database-query latency, Ask Hisab latency, forecasting latency, suggestion latency, sync bandwidth. Check: every number is measured, not estimated.
+The device frozen in `../DECISIONS.md` D028 (Tecno Spark Go 2, 3 GB + 64 GB). First record its build number, security patch, `ro.config.low_ram`, and total RAM, as D028 lists. App size, installed size, cold/warm start, RAM, local-save latency, database-query latency, Ask Hisab latency, forecasting latency, suggestion latency, sync bandwidth. Check: every number is measured, not estimated.
 
 ## Step 102 — Find the actual bottlenecks
 
@@ -607,7 +607,7 @@ Fully offline operation, queued batches, failed/repeated uploads, interrupted sy
 
 ## Step 107 — Run the low-end device experiment
 
-On the M0 reference device, plus a mid-range and a modern device. Check: results recorded for all three.
+On the M0 reference device (`../DECISIONS.md` D028), plus a mid-range and a modern device. Also install the release build on an Android 8.0 (API 26) system image and run the core flow — open, switch language, record a sale offline, sync — to prove minSdk 26 actually works. Check: results recorded for all three devices, and the API 26 run passes.
 
 ## Step 108 — Run the language experiment
 
@@ -645,6 +645,7 @@ Distinct final check, not the same as Steps 98/99. Check: restore actually works
 /research
     /language
     /forecasting
+    /suggestions
     /sync
     /performance
 ```

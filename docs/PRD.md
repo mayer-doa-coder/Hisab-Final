@@ -476,7 +476,7 @@ The following must be measured:
 - complementary-suggestion latency;
 - synchronization bandwidth.
 
-At least one low-end Android device class must be included in evaluation. "Low-end Android device class" must be a specific, reproducible definition, not a vague label — at minimum: device model, Android version, RAM, SoC, storage, and screen characteristics if relevant. This definition, and the app's minSdk, are chosen from research into real target-user devices and then frozen (`../DECISIONS.md` D022) — not guessed.
+At least one low-end Android device class must be included in evaluation. "Low-end Android device class" must be a specific, reproducible definition, not a vague label — at minimum: device model, Android version, RAM, SoC, storage, and screen characteristics if relevant. This definition, and the app's minSdk, are chosen from research into real target-user devices and then frozen (`../DECISIONS.md` D022) — not guessed. Frozen choice: Tecno Spark Go 2, 3 GB RAM + 64 GB eMMC 5.1, Unisoc T7250, Android 15, 6.67" 720 × 1600 (`../DECISIONS.md` D028).
 
 No performance claim should be made without measurement.
 
@@ -632,7 +632,7 @@ Recommended production stack:
 
 Dependencies must be kept deliberately minimal.
 
-minSdk = 26 (Android 8.0), compileSdk = targetSdk = 36 (Android 16). Chosen from research into real target-user devices, then frozen (`../DECISIONS.md` D022, D025) — not picked by guesswork.
+minSdk = 26 (Android 8.0), compileSdk = targetSdk = 36 (Android 16). Chosen from research into real target-user devices, then frozen permanently (`../DECISIONS.md` D022, D025, D028) — not picked by guesswork. `targetSdk` still rises when Google Play requires it; `minSdk` does not change.
 
 Room database schemas are exported, versioned, and committed to the repository from the first schema onward; every schema change has a migration and a migration test in CI. Destructive migrations are never used against production user data.
 
@@ -874,7 +874,7 @@ Primary correctness target:
 
 Benchmark at minimum:
 
-- low-end Android (exact model, Android version, RAM, SoC, storage — see `../DECISIONS.md` D022, not a vague label);
+- low-end Android: Tecno Spark Go 2, 3 GB + 64 GB, Unisoc T7250, Android 15 (`../DECISIONS.md` D022, D028);
 - mid-range Android;
 - reference/modern Android.
 

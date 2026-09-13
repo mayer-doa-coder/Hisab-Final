@@ -194,3 +194,67 @@ Reason: D023's underlying concern is real — Android-only sync fields shouldn't
 Decision: Users, shops, and sessions are held in an in-memory store for now, seeded with a couple of demo accounts — not PostgreSQL. Passwords are hashed with Node's built-in `crypto.scrypt` (salted), not a third-party library. Session tokens are opaque random bytes, checked against an in-memory map — not JWTs.
 Reason: PostgreSQL wiring belongs to M1 (`docs/PHASE_GUIDE.md` Step 23, "Postgres arrives with the real endpoints") — there is no entity yet that needs it. Building migrations and a connection pool now, before Product exists, is exactly the ahead-of-need structure `CLAUDE.md` warns against. `crypto.scrypt` and opaque tokens use only what Node already ships, matching D006's "keep dependencies minimal" — a real password-hashing library (argon2/bcrypt) or JWT library can replace these later if a real need shows up, but scrypt already satisfies "secure password hashing" (`PRD.md` §19.4) without adding one.
 Caveat: this is scoped to Steps 11–12 only. Full hardening — token rotation, expiry, rate limiting, a real user store — is still M7, per D015.
+
+---
+
+## D028 — minSdk 26 Frozen Permanently, and the Low-End Reference Device (closes D022)
+Decision, part 1 — minSdk: `minSdk = 26` (Android 8.0) is frozen permanently. No later step revisits it. This replaces D025's "revisit if pilot data disagrees" caveat: pilot phones are recorded and reported (`docs/RESEARCH_PLAN.md`, "Pilot device record"), not used to move the floor. A phone below Android 8.0 is unsupported, and that is stated as a limitation. Only `minSdk` is frozen — `compileSdk`/`targetSdk` still rise when Google Play requires it.
+
+Decision, part 2 — low-end reference device (for Steps 101 and 107):
+
+| Field | Value |
+| --- | --- |
+| Model | Tecno Spark Go 2 |
+| Variant | 3 GB RAM + 64 GB storage (the cheapest variant — ৳9,999 official price in Bangladesh) |
+| Android version | Android 15 (HiOS 15), as shipped |
+| SoC | Unisoc T7250, 12 nm — CPU 2× Cortex-A75 @ 1.8 GHz + 6× Cortex-A55 @ 1.6 GHz; GPU Mali-G57 MP1 |
+| RAM | 3 GB (the phone's "memory extension" swap is left at factory default; its state is recorded) |
+| Storage | 64 GB eMMC 5.1 |
+| Screen | 6.67" IPS LCD, 720 × 1600, 120 Hz |
+| Battery | 5000 mAh, 15 W |
+| On sale in Bangladesh | Since June 2025 |
+
+When the phone is bought, record in `research/performance/device-research/`: the exact build number, security patch date, `adb shell getprop ro.config.low_ram`, and total RAM from `adb shell cat /proc/meminfo`. Do not update its OS during M7–M8; if an update is forced, record the new build.
+If this exact model can't be bought, use Infinix Smart 10 (3 GB + 64 GB), then Redmi A5 (3 GB + 64 GB) — same SoC, same RAM, same storage type — and record the swap as a new decision entry.
+
+Research behind part 1 (full CSVs saved in `research/performance/device-research/`):
+- StatCounter, Bangladesh, mobile, Android version — August 2026 / average of Feb–Aug 2026:
+  - Android 8.0 and newer (API 26+): **98.04%** / 96.15%. Of that, Android 8.0–10 is 11.65% in August — a real group, mostly older cheap phones, which is why the floor isn't higher.
+  - Below Android 8.0 (4.4–7.1): **1.93%** / 3.84%. The average is pushed up by a May–June 2026 spike in Android 5.0/6.0/8.0 that fell back in July, which looks like bot traffic, not real phones.
+- What other floors would change (August 2026):
+  - API 24 (Android 7.0): +0.52% more phones.
+  - API 23 (Android 6.0, the lowest our libraries allow): +1.43%.
+  - API 28 (Android 9): −2.37%.
+  - API 29 (Android 10): −5.46%.
+- Libraries don't force the floor. Read from the AAR manifests actually used in this build: Room 2.8.5, Compose UI 1.10, and AppCompat 1.8.0 need API 23; core-ktx, activity-compose, and lifecycle need API 21.
+- Why not go lower than 26, for at most +1.43%:
+  - `java.time.Instant` is already used (`SyncOutboxEntity`, `InstantConverters`) and is built in only from API 26. Below that it needs core-library desugaring, an extra build step and dependency.
+  - The launcher icon is an adaptive icon (`mipmap-anydpi-v26`). Below API 26 it would need extra PNG icons.
+  - Android below 7.1.1 does not trust the Let's Encrypt root certificate, so sync could fail depending on the server's certificate.
+  - Those phones are 8+ years old and get no security updates (`docs/SECURITY.md`).
+- Why not go higher: raising to API 28/29 drops 2.4–5.5% of phones. Those are the oldest, cheapest phones, the ones most likely in a small shop, and nothing in the stack needs a higher floor.
+- Limit of this data: StatCounter counts web page views, not phones owned. It leans toward phones that browse more, which are usually newer. So old phones are probably somewhat under-counted — one more reason not to raise the floor.
+
+Research behind part 2:
+- Brand: IDC, Bangladesh, Q3 2025 — Tecno 20.4%, Infinix 18.2%, Xiaomi 14.9%, Vivo 13.6%, OPPO 8.1% of smartphone shipments. IDC also reports Infinix as No. 1 through 2025 and in Q1–Q2 2026. Tecno and Infinix are both Transsion brands, so an entry-level Transsion phone is the most representative choice.
+- Price: IDC Q3 2025 — 41% of smartphones shipped cost under $100, the largest price band. At ৳9,999, the Spark Go 2 is in that band.
+- One chip, three brands: the Unisoc T7250 is also in the Infinix Smart 10 and the Redmi A5, the entry phones of the other two top brands. Results therefore describe the most common current entry-level platform, not one unusual phone.
+- Low end on purpose:
+  - 3 GB RAM is the lowest tier the top brands sell now. Google requires Android Go edition for 2–3 GB phones on Android 15.
+  - eMMC 5.1 is slow storage, which is the honest worst case for local database writes.
+- Repeatable: it's a current model on sale in Bangladesh at an official price, so someone else can buy the same phone.
+- Also relevant: 53.5% of all phones shipped in Bangladesh in Q3 2025 were still feature phones (IDC). Shop owners who own a smartphone at all mostly own cheap ones.
+
+What the reference device does not test: whether the app runs on Android 8.0, because the phone ships Android 15. So Step 107 also installs the release build on an Android 8.0 (API 26) system image (emulator or cloud test device) and runs the core flow: open, switch language, record a sale offline, sync. That is a compatibility check, not a performance measurement.
+The development phone (Samsung Galaxy A15, Android 16) is not the low-end device. The mid-range and modern devices are chosen at Step 107.
+
+Sources:
+- [StatCounter — Android version share, Bangladesh, mobile](https://gs.statcounter.com/android-version-market-share/mobile/bangladesh)
+- [StatCounter — vendor share, Bangladesh, mobile](https://gs.statcounter.com/vendor-market-share/mobile/bangladesh)
+- [IDC Q3 2025 Bangladesh figures, reported by TOB News (7 Nov 2025)](https://tob.news/smartphone-market-share-jumps-to-46-5-in-july-sep/)
+- [IDC: Infinix No. 1 through Q2 2026, reported by TOB News](https://tob.news/infinix-retains-smartphone-market-lead-through-2026/)
+- [TECNO — Spark Go 2 official specs](https://www.tecno-mobile.com/phones/tech-specs/techspecs/spark-go-2/)
+- [MobileDokan — Tecno Spark Go 2 Bangladesh price and release](https://www.mobiledokan.com/mobile/tecno-spark-go-2)
+- [GSMArena — Tecno Spark Go 2](https://m.gsmarena.com/tecno_spark_go_2-13975.php)
+- [GSMArena — Redmi A5](https://www.gsmarena.com/xiaomi_redmi_a5_4g-13737.php)
+- [GSMArena — Google's minimum RAM/storage rules for Android 15 (15 Apr 2025)](https://www.gsmarena.com/here_are_googles_new_minimum_ram_and_storage_requirements_for_android_phones-news-67387.php)

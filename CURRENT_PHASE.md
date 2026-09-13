@@ -2,7 +2,7 @@
 
 M0 — Setup (Steps 1–22)
 
-In progress — Steps 1–15 and 20 checked off. Remaining: 16–19, 21, 22.
+In progress — Steps 1–20 checked off. Remaining: 21, 22.
 
 `docs/PHASE_GUIDE.md` has the exact steps, in order, each with its own check. This file just tracks which step you're on — the step list itself lives in one place only, so don't copy it here.
 
@@ -10,7 +10,7 @@ In progress — Steps 1–15 and 20 checked off. Remaining: 16–19, 21, 22.
 Build the skeleton on both sides, including the specific things that are expensive to retrofit later: Bangla-first localization, minimal authentication with server-derived tenant identity, and the real sync foundation (contract + plumbing, not a throwaway version). Full reasoning: `DECISIONS.md` D014–D024.
 
 ## Current Step
-Step 16 — Build the pull endpoint (GET /sync/changes?after=<cursor>). Steps 18–19 are the device/minSdk and research-data decisions — D025 already covers minSdk.
+Step 21 — Build one backend health-check endpoint, behind the login from Steps 11–12. Step 22 (clean-machine check) is next after that.
 
 Done so far:
 - Step 1 — repo folders created (`android/`, `server/`, `research/`, `scripts/`, `.github/`, plus `CONTRIBUTING.md` and `CHANGELOG.md`).
@@ -34,6 +34,29 @@ Done so far:
   - Step 13 (local tables): `SyncOutboxEntity`/`SyncOutboxDao` and `SyncMetadataEntity`/`SyncMetadataDao` (Room, in `data/sync/`), added via KSP 2.3.12 with Room 2.8.5 — first Room setup in this project. Schema exported to `android/app/schemas/` per PRD section 22. **Verified on a real physical phone** (Samsung Galaxy A15, Android 16), not just compiled: 9 instrumented tests, 0 failures. Covers the unique-eventId constraint, insertion order, status filtering, update, delete, and a real file-backed database that survives a close/reopen with data intact.
     - Two real bugs, caught only by actually running the tests on hardware, fixed in order: (1) a test method used an expression body ending in a call that returns `Boolean`, so Kotlin inferred the method's return type as `Boolean` instead of `Unit` — JUnit 4 requires `void`, so the test failed to even load until the return type was declared explicitly. (2) that same test then asserted the database was open immediately after being built, but Room opens its connection lazily, so the flag is genuinely false until a real query happens — the assertion was moved to after the first insert, where it's actually true.
   - A device-connection detour along the way: an Android emulator halted mid-boot twice and was abandoned in favor of the physical phone, which needed a full adb server restart to clear a stuck "unauthorized" state before it would accept the RSA debugging key.
+- Steps 16–17 — the sync foundation, second half. `server/src/modules/sync/eventLog.ts` replaced `processedEvents.ts`, combining idempotency, conflict-checking, and pull into one store (D026 — these three interact too much to keep separate: a rejected event must never be marked processed or show up in a pull).
+  - Step 17 (conflict check): an update/delete's `base_revision` is checked against a per-entity current-revision counter (using the existing `checkRevision` from `server/src/domain/revision.ts`); a stale one is rejected with `REVISION_CONFLICT` and left completely unapplied — not marked processed (so retrying the identical push is re-checked fresh, not silently treated as a duplicate) and not stored (so it can never appear in a pull). Exact Step 17 check — edit the same record twice with the same base revision, second one rejected — passes both as a unit test and through the real HTTP endpoint.
+  - Step 16 (pull endpoint): `GET /sync/changes?after=<cursor>`, behind `requireAuth`, scoped to the requester's own shop (never another shop's events — D015). No cursor returns everything; the same cursor again returns nothing new; a non-numeric cursor is rejected with 400.
+  - Verified at three levels: 64 server tests (25 new for this pair of steps), a full manual walkthrough against a real running server via curl (create → pull → conflicting edit → pull again, confirming the rejected edit never leaks into pull results), and — because `revision.ts` reverted to its fuller `checkRevision`/`Revisioned<T>` shape from an earlier simplification at some point outside this work — built directly on what's actually on disk rather than re-simplifying it again.
+  - Two real bugs caught while writing this, both in test design, not production code: (1) a pull-endpoint test wrongly assumed the shop's event log started empty, when it is genuinely shared, process-wide state across every test in the file (matching real usage) — fixed by checking the pushed events are *present* in the pull result rather than the *only* things in it. (2) after deleting the old `processedEvents.ts`/`.test.ts`, `tsc`'s incremental build left the compiled output behind in `dist/`, so 5 dead tests from the deleted module kept silently running alongside the real ones — caught by noticing the test count didn't match expectations, fixed with a clean rebuild (`rm -rf dist`).
+- Step 18 — `DECISIONS.md` D028 closes D022.
+  - **minSdk:** 26, frozen permanently.
+    - StatCounter CSV export, Bangladesh, mobile, August 2026: 98.04% of Android page views run Android 8.0+. Below 8.0 is 1.93%.
+    - Going lower would gain at most 1.43% and would need desugaring for `java.time`, which the sync outbox already uses. Raising to API 28/29 would drop 2.4–5.5%, the oldest cheap phones.
+    - Room/Compose/AppCompat were checked from their actual AAR manifests: they need API 23, so libraries don't force the choice.
+  - **Low-end reference device:** Tecno Spark Go 2, 3 GB + 64 GB eMMC 5.1, Unisoc T7250, Android 15, 6.67" 720 × 1600, ৳9,999.
+    - Tecno and Infinix (both Transsion) are the top brands by IDC shipments for Q3 2025 through Q2 2026.
+    - Under-$100 phones are the biggest price band (41%).
+    - The same chip is in the Infinix Smart 10 and Redmi A5, which are the named fallbacks.
+  - Raw StatCounter CSVs saved in `research/performance/device-research/`, so the numbers stay checkable after StatCounter updates.
+  - Gap found and closed: the reference device ships Android 15, so it can't prove minSdk 26 works. Step 107 now also runs the core flow on an API 26 system image.
+- Step 19 — `docs/RESEARCH_PLAN.md` Research Data Plan rewritten to concrete rules. Answer to the Step 19 check: **held-out sentences may only be written by someone who is not the rule developer, has never seen the rule code, dev set, or system output, and knows Bangla shop talk.** The file stays with them, and only its hash is committed until Step 108. Also covers:
+  - writer instructions (situations, not example sentences) and minimum sizes;
+  - annotation fields and a second labeler on 20%;
+  - forecasting sources (real / synthetic / public, always reported separately), anonymization, stockout-day marking;
+  - the consent form and withdrawal;
+  - the pilot device record;
+  - dataset versioning, and deleting raw exports 12 months after release.
 
 ## Allowed Right Now
 Anything in M0 (Steps 1–22 of `docs/PHASE_GUIDE.md`) — Bangla/English setup, minimal auth, the sync foundation, domain conventions, device/minSdk research, the research data plan, one screen, one endpoint.
