@@ -14,14 +14,17 @@
     "test": "node --test \"dist/**/*.test.js\"",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "migrate": "tsc && node dist/db/migrateCli.js"
   },
   "dependencies": {
-    "fastify": "^5.12.4"
+    "fastify": "^5.12.4",
+    "pg": "^8.23.0"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@types/node": "^24.13.4",
+    "@types/pg": "^8.23.1",
     "eslint": "^10.10.0",
     "eslint-config-prettier": "^10.1.8",
     "prettier": "^3.9.6",

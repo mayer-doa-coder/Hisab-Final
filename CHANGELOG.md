@@ -44,5 +44,21 @@ Versions use semantic versioning. The first public research release will be `v1.
 - Per-script fonts extended to text the user typed: `scriptAwareText` splits a string word by word, so "চিনি 1kg" renders each part in its own font, including inside text fields (D010).
 - Tests: 34 new unit tests (money parsing/formatting, form validation, script splitting) and 4 new instrumented test classes (DAO, repository, the 1→2 migration, and the product screens end to end).
 
+### Added (M1 — Sync, Steps 31–34)
+- `scripts/check-room-schema.sh`, run in CI after the Android build: the declared database version must match the newest exported schema, every version step must have a registered migration, and the exported files must match the committed ones. Verified by deliberately changing an entity without a migration and watching it fail (Step 31).
+- Every product write queues a sync event in the same database transaction as the change itself (D003), so there can never be a change with nothing to send (Step 32).
+- `SyncEngine` on the phone: send what is queued, then pull what the server has and save it locally, remembering the cursor. A refused change is kept and marked `conflict` rather than dropped or retried blindly (Steps 32–34).
+- `SyncApi` over `HttpURLConnection` and `org.json` — no HTTP or JSON library (D006). The INTERNET permission was added for this; plain HTTP is allowed in debug builds only, so a release build cannot send a shop's data unencrypted.
+- A Sync screen: server address, email, password, "sync now", and how many changes are waiting. Background syncing on a schedule is still M4.
+- Server: pushed events now write real product rows, and a pull reads the product table, so a product created through `POST /products` reaches the phone too. Applied event ids and the change cursor moved from memory into Postgres (migrations 002, 003), so a restart no longer forgets what was already applied.
+- Migrations now take a database lock while they run: two servers — or two test files, which is how this was found — could otherwise both try to create the same table.
+
+### Added (M1 — Product on the server, Steps 29–30)
+- Postgres, from `server/migrations/*.sql` applied by a small runner (`npm run migrate`) that records each applied file and runs it in a transaction. First migration creates `product` with money as `BIGINT` poisha, aliases as a real array, and checks for a non-blank name and non-negative prices (Step 29).
+- Product endpoints behind the login guard, with the shop taken only from the session token (D015): `POST /products` (idempotent on a repeated id), `PUT /products/:id` (full replace, refuses a stale `baseRevision` with `REVISION_CONFLICT`), and `GET /products?q=&includeInactive=` searching name and aliases (Step 30).
+- `DECISIONS.md` D030: local portable Postgres for development, a throwaway container in CI, a hosted database such as Supabase only for the deployed pilot; plain SQL migrations rather than a migration library; and the schema conventions.
+- CI now starts a `postgres:18` service and runs the migrations before the tests, which is what proves they still apply to an empty database.
+- README: how to set up and run the local Postgres, with no password anywhere.
+
 ### Added (Step 20)
 - `HomeScreenTest` (on-phone): opens in Bangla even on an English phone, the language button switches both ways, and the choice survives closing and reopening the app. 13 on-phone tests total, 0 failures.

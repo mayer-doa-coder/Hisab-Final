@@ -24,6 +24,7 @@ import com.hisab.app.data.product.ProductWriteResult
 import com.hisab.app.ui.product.ProductEditScreen
 import com.hisab.app.ui.product.ProductListScreen
 import com.hisab.app.ui.product.ProductViewModel
+import com.hisab.app.ui.sync.SyncScreen
 import com.hisab.app.ui.theme.ClayColors
 import com.hisab.app.ui.theme.ClayText
 import com.hisab.app.ui.theme.HisabTheme
@@ -31,6 +32,7 @@ import com.hisab.app.ui.theme.HisabTheme
 private const val ROUTE_HOME = "home"
 private const val ROUTE_PRODUCTS = "products"
 private const val ROUTE_PRODUCT_FORM = "product_form"
+private const val ROUTE_SYNC = "sync"
 
 /**
  * Which screen is showing. Kept as a saved string rather than a navigation
@@ -82,11 +84,17 @@ fun HisabApp(
                 )
             }
 
+            ROUTE_SYNC -> {
+                BackHandler { route = ROUTE_HOME }
+                SyncScreen(viewModel = viewModel(), onBack = { route = ROUTE_HOME })
+            }
+
             else -> {
                 HomeScreen(
                     language = language,
                     onChangeLanguage = onChangeLanguage,
                     onOpenProducts = { route = ROUTE_PRODUCTS },
+                    onOpenSync = { route = ROUTE_SYNC },
                 )
             }
         }

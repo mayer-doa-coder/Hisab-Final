@@ -54,4 +54,19 @@
     <string name="unit_packet">Packet</string>
     <string name="unit_bottle">Bottle</string>
     <string name="unit_dozen">Dozen</string>
+
+    <!-- Sync (M1, Steps 32–33) -->
+    <string name="sync_title">Sync</string>
+    <string name="sync_open">Sync with the server</string>
+    <string name="sync_server_label">Server address</string>
+    <string name="sync_email_label">Email</string>
+    <string name="sync_password_label">Password</string>
+    <string name="sync_password_hint">Only needed the first time you sign in</string>
+    <string name="action_sync_now">Sync now</string>
+    <string name="sync_running">Syncing…</string>
+    <string name="sync_never">Not synced yet</string>
+    <string name="sync_result">Sent %1$d, received %2$d, conflicts %3$d</string>
+    <string name="sync_failed">Sync failed: %1$s</string>
+    <string name="sync_not_signed_in">Enter your email and password first</string>
+    <string name="sync_pending_count">Waiting to send: %1$d</string>
 </resources>

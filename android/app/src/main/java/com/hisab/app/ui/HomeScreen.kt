@@ -29,6 +29,7 @@ fun HomeScreen(
     language: AppLanguage,
     onChangeLanguage: (AppLanguage) -> Unit,
     onOpenProducts: () -> Unit,
+    onOpenSync: () -> Unit,
 ) {
     val font = fontFor(language)
     val otherLanguage = language.other()
@@ -76,6 +77,13 @@ fun HomeScreen(
             text = stringResource(R.string.products_open),
             onClick = onOpenProducts,
             modifier = Modifier.fillMaxWidth().padding(top = 28.dp),
+        )
+
+        ClayButton(
+            text = stringResource(R.string.sync_open),
+            onClick = onOpenSync,
+            style = ClayButtonStyle.SOFT,
+            modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
         )
 
         Text(

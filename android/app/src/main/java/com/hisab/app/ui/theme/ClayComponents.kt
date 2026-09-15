@@ -38,6 +38,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -294,6 +295,7 @@ fun ClayTextField(
     leadingIcon: Painter? = null,
     trailingContent: @Composable (() -> Unit)? = null,
     userTypedText: Boolean = true,
+    password: Boolean = false,
     /** Names the input for UI tests, which otherwise cannot tell four identical-looking fields apart. */
     fieldTag: String? = null,
 ) {
@@ -340,7 +342,11 @@ fun ClayTextField(
             isError = errorText != null,
             // Numbers and names alike keep the per-script font rule (D010).
             visualTransformation =
-                if (userTypedText) ScriptAwareVisualTransformation() else VisualTransformation.None,
+                when {
+                    password -> PasswordVisualTransformation()
+                    userTypedText -> ScriptAwareVisualTransformation()
+                    else -> VisualTransformation.None
+                },
             textStyle = LocalTextStyle.current.copy(fontSize = 16.sp, color = ClayColors.Ink),
             keyboardOptions =
                 androidx.compose.foundation.text

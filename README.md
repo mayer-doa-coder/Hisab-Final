@@ -49,11 +49,38 @@ git clone https://github.com/mayer-doa-coder/Hisab-Final.git
 cd Hisab-Final
 ```
 
-### 2. Server
+### 2. Database (Postgres)
+From M1 onwards the server keeps shop data in Postgres. For development, a plain local Postgres is enough — it trusts connections from your own machine, so there is no password to store anywhere (`DECISIONS.md` D030).
+
+One-time setup on Windows, without an installer or admin rights:
+
+1. Download the **binaries-only** zip for Postgres 18 from [EDB's binaries page](https://www.enterprisedb.com/download-postgresql-binaries) and unzip it, for example to `C:\Users\<you>\AppData\Local\hisab-postgres`. You get a `pgsql` folder inside.
+2. Create the data folder and start the server on port 5433 (5433, not the usual 5432, so it cannot clash with any other Postgres):
+   ```bash
+   PG="/c/Users/<you>/AppData/Local/hisab-postgres/pgsql"
+   "$PG/bin/initdb" -D "$PG/../data" -U postgres --auth=trust --encoding=UTF8
+   "$PG/bin/pg_ctl" -D "$PG/../data" -o "-p 5433" -l "$PG/../server.log" start
+   ```
+3. Create the two databases — one for development, one for tests:
+   ```bash
+   "$PG/bin/createdb" -h 127.0.0.1 -p 5433 -U postgres hisab_dev
+   "$PG/bin/createdb" -h 127.0.0.1 -p 5433 -U postgres hisab_test
+   ```
+
+Later, start and stop it with:
+```bash
+"$PG/bin/pg_ctl" -D "$PG/../data" -o "-p 5433" -l "$PG/../server.log" start
+"$PG/bin/pg_ctl" -D "$PG/../data" stop
+```
+
+The server connects to `postgres://postgres@127.0.0.1:5433/hisab_dev`, and `npm test` uses `hisab_test` instead. Set `DATABASE_URL` to point anywhere else — that is the only change needed for a hosted database later.
+
+### 3. Server
 ```bash
 cd server
 npm ci                 # install exactly the locked versions
 npm run build          # compile TypeScript
+npm run migrate        # create the tables (safe to re-run)
 npm test               # every test must pass, "fail 0"
 npm run lint
 npm run format:check
@@ -76,7 +103,7 @@ curl http://127.0.0.1:3000/health -H "Authorization: Bearer PASTE_TOKEN_HERE"
 ```
 `rahim@example.com` is a made-up demo account that lives only in memory while the server runs (`DECISIONS.md` D027). It is not a real account, and it goes away when real user storage arrives.
 
-### 3. Android app
+### 4. Android app
 ```bash
 bash scripts/check-localization.sh     # run from the repository root
 
@@ -93,7 +120,7 @@ cd android
 4. Run `./gradlew installDebug`, then open **হিসাব** on the phone. It opens in Bangla, even if the phone itself is set to English. Tap **English** to switch.
 5. Run `./gradlew connectedDebugAndroidTest` for the on-phone tests. This removes the app when it finishes, so run `./gradlew installDebug` again afterwards.
 
-### 4. CI
+### 5. CI
 Every push to `main` runs the same checks in GitHub Actions (`.github/workflows/ci.yml`): the localization check; Android build, unit tests, and lint; and server build, tests, lint, and format. The on-phone tests are not in CI, because there is no phone there — run them yourself before calling an Android step done.
 
 ## Where To Start

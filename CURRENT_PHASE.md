@@ -10,7 +10,12 @@ Steps 23–27 are built. M0 (Steps 1–22) is finished and verified locally; its
 Build Product end to end — local table, screens, then the backend and sync wiring — as the first real feature to flow through the M0 sync foundation.
 
 ## Current Step
-Step 28 — check the whole local Product flow (add, edit, search) in airplane mode.
+M1 (Steps 23–34) is built. Two checks are still owed before it can be called done:
+
+1. **Step 28** — add, edit and search on the phone with airplane mode on. Nothing in the local path touches the network, but the check is a real run, not an argument.
+2. **Steps 32–34 on the device** — the phone was unplugged when the device suite was due to run. Needed: `connectedDebugAndroidTest` with the phone attached, the server running (`npm start`) and `adb reverse tcp:3000 tcp:3000`, which also runs the real end-to-end sync test.
+
+Then M2 — Sale and Stock (Step 35 onward).
 
 Two checks are still owed from earlier steps:
 - Push, then confirm CI is green and that the server job's "Unit tests" step reports 68 tests, not 21 (Step 22).
@@ -21,6 +26,15 @@ Two checks are still owed from earlier steps:
 - Step 25 — Product list screen, reading the database as a live query, so a write appears by itself.
 - Step 26 — Add/Edit screen: name, other names, unit, selling price, optional purchase price, plus deactivate/reactivate and delete. Saving writes locally and returns; nothing waits on a network.
 - Step 27 — search over name and aliases, in the same query that lists products.
+- Step 29 — `product` in Postgres: `server/migrations/001_create_product.sql`, applied by a small runner that records what it has applied (`npm run migrate`). **Checked on a real empty database**: the migration applied cleanly, running it again did nothing, and the table came out with the expected columns, checks and index. Postgres itself runs locally from the portable binaries, with CI using a throwaway container (D030).
+- Step 30 — product endpoints, all behind the login guard: `POST /products`, `PUT /products/:id`, `GET /products?q=&includeInactive=`. The shop always comes from the token, never the request. A stale `baseRevision` is refused with `REVISION_CONFLICT` (409); an unknown or another shop's product gives 404, which also avoids telling one shop that another shop's product exists. Verified by 16 tests and by a walkthrough against a running server with curl.
+  - Design point found while testing by hand: an edit was a PATCH whose missing fields fell back to defaults, so leaving out the purchase price silently cleared it. It is now a PUT that requires every field — a caller who forgets one gets a 400 instead of losing data.
+- Step 31 — `scripts/check-room-schema.sh`, run in CI right after the Android build (which re-exports the schema). It checks that the declared database version matches the newest exported schema, that every version step has a migration registered on the builder, and that the exported files match what is committed. **Proved by breaking it on purpose**: added a column to the Product table with no new version, and the check failed; restored it, and the check passed again.
+- Step 32 — every product write now queues a sync event in the same database transaction (D003), so a change and the record of it to send are saved together or not at all. `SyncEngine` sends what is queued, then pulls. A refused change is kept and marked rather than dropped.
+- Step 33 — a pull writes the server's products into the phone's database, including deletions, and remembers the cursor so the next sync only asks for what is new. Server side, a pull reads the product table itself, so a product made straight through `POST /products` reaches the phone too.
+- Step 34 — the conflict path, end to end: this phone edits from revision 1, another device got there first, and the push comes back `REVISION_CONFLICT` with the other device's version arriving in the same sync.
+- Sync is something the user asks for, on a Sync screen (server address, email, password, "sync now", and how many changes are waiting). Doing it automatically in the background is M4.
+- Server side of sync moved off in-memory state: applied event ids and the change cursor now live in Postgres, so a restart no longer forgets what was already applied (migrations 002 and 003).
 - Design: claymorphism, written once in `ui/theme/` and used by every screen (D029).
 - Money: integer poisha throughout; shown in the digits of the language on screen (১২.৫০ / 12.50) and typed in either.
 - Fonts: app labels take the language's font; anything the shopkeeper typed is split per script, per word, so "চিনি 1kg" renders each part in its own font — including while typing (D010).

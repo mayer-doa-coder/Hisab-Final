@@ -41,7 +41,7 @@ data class ProductListUiState(
 class ProductViewModel(
     application: Application,
 ) : AndroidViewModel(application) {
-    private val repository = ProductRepository(HisabDatabase.get(application).productDao())
+    private val repository = ProductRepository(HisabDatabase.get(application))
 
     private val query = MutableStateFlow("")
     private val includeInactive = MutableStateFlow(false)

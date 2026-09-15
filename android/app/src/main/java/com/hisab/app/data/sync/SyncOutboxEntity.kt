@@ -40,5 +40,11 @@ data class SyncOutboxEntity(
         const val STATUS_PENDING = "pending"
         const val STATUS_SENT = "sent"
         const val STATUS_ACKNOWLEDGED = "acknowledged"
+
+        /** The server refused it: the product had already moved on (D017). Kept, not retried blindly. */
+        const val STATUS_CONFLICT = "conflict"
+
+        /** The server would not take it at all — a bad payload or an unknown entity. */
+        const val STATUS_REJECTED = "rejected"
     }
 }

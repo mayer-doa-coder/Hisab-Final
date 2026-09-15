@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify'
-import { requireAuth } from '../auth/requireAuth.js'
-import { applyEvent, changesSince, INITIAL_CURSOR } from './eventLog.js'
 import type { SyncEventEnvelope } from '../../domain/syncEvent.js'
+import { requireAuth } from '../auth/requireAuth.js'
+import { applyEvent, changesSince, INITIAL_CURSOR } from './syncService.js'
 
 const eventSchema = {
   type: 'object',
@@ -18,12 +18,12 @@ const eventSchema = {
 } as const
 
 export function registerSyncRoutes(app: FastifyInstance): void {
-  // Step 15 + 17: accepts a batch of events. Never applies the same eventId
-  // twice, even across separate requests (D004). An update/delete whose
-  // base_revision no longer matches the entity's current revision is
-  // rejected with REVISION_CONFLICT, not silently applied (D017). Behind
-  // requireAuth like every endpoint (D015) — shop_id always comes from the
-  // token, never the request body.
+  // Steps 15, 17 and 32: accepts a batch of changes a phone made, possibly
+  // offline, and applies them to the real data. The same eventId is never
+  // applied twice (D004), and an update or delete whose base_revision has
+  // moved on is refused with REVISION_CONFLICT rather than overwriting
+  // someone else's change (D017). Behind requireAuth like everything else —
+  // the shop comes from the token, never the request (D015).
   app.post<{ Body: { events: SyncEventEnvelope[] } }>(
     '/sync/push',
     {
@@ -39,15 +39,19 @@ export function registerSyncRoutes(app: FastifyInstance): void {
       },
     },
     async (request, reply) => {
-      const results = request.body.events.map((event) => applyEvent(request.auth.shopId, event))
+      // One at a time, in the order the phone sent them: a create and the
+      // edit that follows it must not race each other.
+      const results = []
+      for (const event of request.body.events) {
+        results.push(await applyEvent(request.auth.shopId, event))
+      }
       reply.send({ results })
     },
   )
 
-  // Step 16: returns every change after the given cursor, plus the cursor to
-  // pull from next time. No `after` means "from the beginning" — everything
-  // this shop has. Scoped to the requester's own shop, same as every other
-  // endpoint (D015) — never another shop's events.
+  // Steps 16 and 33: everything this shop has to catch up on, plus the cursor
+  // to ask from next time. No cursor means "from the beginning". Scoped to
+  // the requester's own shop (D015).
   app.get<{ Querystring: { after?: string } }>(
     '/sync/changes',
     {
@@ -71,7 +75,7 @@ export function registerSyncRoutes(app: FastifyInstance): void {
         }
       }
 
-      const { events, cursor } = changesSince(request.auth.shopId, after)
+      const { events, cursor } = await changesSince(request.auth.shopId, after)
       reply.send({ events, cursor })
     },
   )

@@ -61,4 +61,19 @@
     <string name="unit_packet">প্যাকেট</string>
     <string name="unit_bottle">বোতল</string>
     <string name="unit_dozen">ডজন</string>
+
+    <!-- Sync (M1, Steps 32–33) -->
+    <string name="sync_title">সিঙ্ক</string>
+    <string name="sync_open">সার্ভারে সিঙ্ক করুন</string>
+    <string name="sync_server_label">সার্ভারের ঠিকানা</string>
+    <string name="sync_email_label">ইমেইল</string>
+    <string name="sync_password_label">পাসওয়ার্ড</string>
+    <string name="sync_password_hint">শুধু প্রথমবার সাইন ইন করার সময় লাগে</string>
+    <string name="action_sync_now">এখনই সিঙ্ক করুন</string>
+    <string name="sync_running">সিঙ্ক হচ্ছে…</string>
+    <string name="sync_never">এখনো সিঙ্ক হয়নি</string>
+    <string name="sync_result">পাঠানো %1$d, আনা %2$d, দ্বন্দ্ব %3$d</string>
+    <string name="sync_failed">সিঙ্ক হয়নি: %1$s</string>
+    <string name="sync_not_signed_in">আগে ইমেইল ও পাসওয়ার্ড দিন</string>
+    <string name="sync_pending_count">পাঠানো বাকি: %1$d</string>
 </resources>

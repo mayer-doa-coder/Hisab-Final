@@ -50,6 +50,12 @@ jobs:
       - name: Compile
         run: ./gradlew assembleDebug compileDebugAndroidTestKotlin
 
+      # Step 31: run after the build, which re-exports the Room schema, so a
+      # schema changed without a matching migration fails here.
+      - name: Room schema and migrations
+        working-directory: .
+        run: bash scripts/check-room-schema.sh
+
       # "Android unit tests" — Step 4
       - name: Unit tests
         run: ./gradlew testDebugUnitTest
@@ -64,6 +70,23 @@ jobs:
     defaults:
       run:
         working-directory: server
+    # A throwaway Postgres for this run only (Step 29). Local connections are
+    # trusted, so there is no password here or anywhere else in the repo.
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_HOST_AUTH_METHOD: trust
+          POSTGRES_DB: hisab_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgres://postgres@127.0.0.1:5432/hisab_test
     steps:
       - uses: actions/checkout@v7
 
@@ -79,6 +102,11 @@ jobs:
       # "Server compile" — Step 4
       - name: Compile
         run: npm run build
+
+      # Step 29: the migrations must run cleanly on an empty database. This
+      # step proves that on every push, because the container starts empty.
+      - name: Database migrations
+        run: npm run migrate
 
       # "Server unit tests" — Step 4. The test pattern in package.json is
       # quoted on purpose: unquoted, Linux `sh` expands `dist/**/*.test.js`

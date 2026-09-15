@@ -275,3 +275,27 @@ Rules that override the look wherever they clash:
 Inspiration came from tactile/soft-button component examples on 21st.dev. No code was copied: those are React and Tailwind, and this app is Jetpack Compose — only the visual idea carried over.
 
 Not decided here: dark mode. The app is light-only for now; a dark palette would need its own entry.
+
+---
+
+## D030 — How Postgres Is Run, and How the Schema Changes
+Decision, in three parts.
+
+**Where the database runs.**
+- Development and tests: a local Postgres 18, unpacked from the official binaries-only zip (no installer, no admin rights), listening on port **5433** and trusting connections from this machine. Databases `hisab_dev` and `hisab_test`. Because local connections are trusted, **there is no password anywhere in the repository** (CLAUDE.md).
+- CI: a throwaway `postgres:18` service container, also with trust auth, created empty for every run — which is what proves the migrations still run on an empty database (Step 29).
+- Later, for the pilot deployment: a hosted Postgres such as Supabase. Nothing in the code changes; `DATABASE_URL` points somewhere else.
+
+Rejected for development: Supabase or any hosted database. Every test would need internet and a network round trip per query, the connection string is a secret to manage, free projects pause when idle, and anyone cloning the repo — including a reviewer of the research artifact — would need an account before the tests could run. Rejected for now: Docker, because it means starting Docker Desktop before any work; the portable install has no such step. PGlite was rejected as a dependency that is not quite a real server.
+
+**How the schema changes.** Numbered plain `.sql` files in `server/migrations/`, applied by a small runner (`server/src/db/migrate.ts`) that records each applied filename in a `schema_migrations` table and runs each migration in its own transaction. Re-running does nothing. `npm run migrate` applies them; CI runs it on every push.
+
+Rejected: node-pg-migrate, Drizzle, Prisma. They are bigger tools that would own the schema and add a generation step, where plain SQL is readable by anyone who knows SQL and is the whole mechanism (D006).
+
+**Schema conventions.**
+- Column names in `snake_case`, matching `docs/DATA_MODEL.md`; the domain shape stays camelCase, and the row is mapped to it (Step 7) rather than assumed identical to the phone's Room entity.
+- Money is `BIGINT` poisha; quantity will be `BIGINT` scaled by 1000. Never floating point.
+- Ids are `TEXT`, because they are generated on the phone (D018) and must be storable exactly as sent.
+- Timestamps are `TIMESTAMPTZ`, returned as ISO-8601 strings.
+- Every query is written with `shop_id` in the WHERE clause, taken from the session token and never from the request (D015).
+- Queries always use parameters, never strings built by hand.

@@ -52,7 +52,7 @@ class ProductRepositoryTest {
 
                 override fun instant() = clockNow
             }
-        repository = ProductRepository(database.productDao(), clock, shopId = "shop-under-test")
+        repository = ProductRepository(database, clock, shopId = "shop-under-test")
     }
 
     @After

@@ -1,14 +1,43 @@
-import { test } from 'node:test'
+import { after, before, test } from 'node:test'
 import assert from 'node:assert/strict'
+import { randomUUID } from 'node:crypto'
 import { buildApp } from '../../app.js'
+import { closePool } from '../../db/pool.js'
+import { runMigrations } from '../../db/migrate.js'
 
-function sampleEvent(eventId: string, entityId: string, overrides: Record<string, unknown> = {}) {
+// Needs a Postgres to talk to — see README.md, "Run It Yourself".
+before(async () => {
+  await runMigrations()
+})
+
+after(async () => {
+  await closePool()
+})
+
+type App = ReturnType<typeof buildApp>
+
+function productPayload(name: string, overrides: Record<string, unknown> = {}) {
   return {
-    eventId,
+    name,
+    aliases: [],
+    unit: 'piece',
+    sellingPricePoisha: 2000,
+    purchasePricePoisha: null,
+    active: true,
+    ...overrides,
+  }
+}
+
+function event(
+  entityId: string,
+  overrides: Record<string, unknown> = {},
+): Record<string, unknown> {
+  return {
+    eventId: randomUUID(),
     entityType: 'Product',
     entityId,
-    operation: 'create' as const,
-    payload: { name: 'Coke 500ml' },
+    operation: 'create',
+    payload: productPayload(`Sync ${entityId.slice(0, 8)}`),
     baseRevision: null,
     clientTimestamp: '2026-01-01T00:00:00Z',
     ...overrides,
@@ -16,23 +45,19 @@ function sampleEvent(eventId: string, entityId: string, overrides: Record<string
 }
 
 async function loginToken(
-  app: ReturnType<typeof buildApp>,
+  app: App,
   email = 'rahim@example.com',
   password = 'correct-horse-1',
 ): Promise<string> {
-  const res = await app.inject({
+  const response = await app.inject({
     method: 'POST',
     url: '/auth/login',
     payload: { email, password },
   })
-  return res.json().token as string
+  return response.json().token as string
 }
 
-async function push(
-  app: ReturnType<typeof buildApp>,
-  token: string,
-  events: ReturnType<typeof sampleEvent>[],
-) {
+async function push(app: App, token: string, events: Record<string, unknown>[]) {
   return app.inject({
     method: 'POST',
     url: '/sync/push',
@@ -41,7 +66,25 @@ async function push(
   })
 }
 
-// --- Push (Step 15) ---
+async function pull(app: App, token: string, cursor?: number) {
+  const query = cursor === undefined ? '' : `?after=${cursor}`
+  return app.inject({
+    method: 'GET',
+    url: `/sync/changes${query}`,
+    headers: { authorization: `Bearer ${token}` },
+  })
+}
+
+async function products(app: App, token: string, query: string) {
+  const response = await app.inject({
+    method: 'GET',
+    url: `/products?q=${encodeURIComponent(query)}&includeInactive=true`,
+    headers: { authorization: `Bearer ${token}` },
+  })
+  return response.json().products as { id: string; name: string; revision: number }[]
+}
+
+// --- Push (Steps 15, 32) ---
 
 test('POST /sync/push requires a token', async () => {
   const app = buildApp()
@@ -50,131 +93,186 @@ test('POST /sync/push requires a token', async () => {
   assert.equal(response.statusCode, 401)
 })
 
-test('POST /sync/push applies a new event', async () => {
+// Step 32: a change made on the phone becomes a real product on the server.
+test('a pushed create becomes a product the endpoints can see', async () => {
   const app = buildApp()
   const token = await loginToken(app)
+  const id = randomUUID()
+  const name = `Pushed ${id.slice(0, 8)}`
 
-  const response = await push(app, token, [sampleEvent('evt-push-1', 'prod-1')])
+  const response = await push(app, token, [
+    event(id, { payload: productPayload(name, { sellingPricePoisha: 8500, aliases: ['pushalias'] }) }),
+  ])
 
   assert.equal(response.statusCode, 200)
-  assert.deepEqual(response.json().results, [{ eventId: 'evt-push-1', status: 'applied' }])
+  assert.equal(response.json().results[0].status, 'applied')
+
+  const stored = await products(app, token, name)
+  assert.equal(stored.length, 1)
+  assert.equal(stored[0]!.id, id)
+  assert.equal(stored[0]!.revision, 1)
 })
 
-// The exact scenario Step 15 describes: pushing the same event twice has the
-// same effect as pushing it once.
-test('pushing the same event twice, in two separate requests, only applies it once', async () => {
+// D004: the phone resends anything it is unsure about.
+test('pushing the same event twice only applies it once', async () => {
   const app = buildApp()
   const token = await loginToken(app)
-  const event = sampleEvent('evt-push-repeat', 'prod-2')
+  const id = randomUUID()
+  const name = `Repeat ${id.slice(0, 8)}`
+  const pushed = event(id, { payload: productPayload(name) })
 
-  const first = await push(app, token, [event])
-  const second = await push(app, token, [event])
+  const first = await push(app, token, [pushed])
+  const second = await push(app, token, [pushed])
 
-  assert.deepEqual(first.json().results, [{ eventId: 'evt-push-repeat', status: 'applied' }])
-  assert.deepEqual(second.json().results, [
-    { eventId: 'evt-push-repeat', status: 'already-applied' },
-  ])
+  assert.equal(first.json().results[0].status, 'applied')
+  assert.equal(second.json().results[0].status, 'already-applied')
+  assert.equal((await products(app, token, name)).length, 1)
 })
 
-test('a batch can mix a previously-applied event with a brand-new one', async () => {
+test('a batch can mix an already-applied event with a new one', async () => {
+  const app = buildApp()
+  const token = await loginToken(app)
+  const old = event(randomUUID())
+  await push(app, token, [old])
+
+  const response = await push(app, token, [old, event(randomUUID())])
+
+  assert.deepEqual(
+    response.json().results.map((result: { status: string }) => result.status),
+    ['already-applied', 'applied'],
+  )
+})
+
+test('an event without baseRevision is rejected by the schema', async () => {
+  const app = buildApp()
+  const token = await loginToken(app)
+  const { baseRevision, ...withoutBaseRevision } = event(randomUUID())
+  void baseRevision
+
+  const response = await push(app, token, [withoutBaseRevision])
+
+  assert.equal(response.statusCode, 400)
+})
+
+test('an unknown operation is rejected by the schema', async () => {
   const app = buildApp()
   const token = await loginToken(app)
 
-  await push(app, token, [sampleEvent('evt-batch-old', 'prod-3')])
+  const response = await push(app, token, [event(randomUUID(), { operation: 'destroy' })])
+
+  assert.equal(response.statusCode, 400)
+})
+
+test('a payload that is not a usable product is refused, not half-written', async () => {
+  const app = buildApp()
+  const token = await loginToken(app)
 
   const response = await push(app, token, [
-    sampleEvent('evt-batch-old', 'prod-3'),
-    sampleEvent('evt-batch-new', 'prod-4'),
+    event(randomUUID(), { payload: { name: '', sellingPricePoisha: 'free' } }),
   ])
 
-  assert.deepEqual(response.json().results, [
-    { eventId: 'evt-batch-old', status: 'already-applied' },
-    { eventId: 'evt-batch-new', status: 'applied' },
-  ])
+  assert.equal(response.json().results[0].status, 'rejected')
+  assert.equal(response.json().results[0].code, 'INVALID_PAYLOAD')
 })
 
-test('an update event must carry a baseRevision (schema requires the field, even if null)', async () => {
+test('an entity type the server does not know is refused', async () => {
   const app = buildApp()
   const token = await loginToken(app)
 
-  const response = await app.inject({
-    method: 'POST',
-    url: '/sync/push',
-    headers: { authorization: `Bearer ${token}` },
-    payload: {
-      events: [
-        {
-          eventId: 'evt-bad',
-          entityType: 'Product',
-          entityId: 'prod-5',
-          operation: 'update',
-          payload: {},
-          clientTimestamp: '2026-01-01T00:00:00Z',
-          // baseRevision deliberately omitted
-        },
-      ],
-    },
+  const response = await push(app, token, [event(randomUUID(), { entityType: 'Dragon' })])
+
+  assert.equal(response.json().results[0].status, 'rejected')
+  assert.equal(response.json().results[0].code, 'UNSUPPORTED_ENTITY')
+})
+
+// --- Conflicts (Steps 17, 34) ---
+
+// Step 34: two devices edit the same product from the same revision, both
+// offline, then both sync. The second one to arrive must be refused.
+test('the second edit from the same revision is refused, and the first one stands', async () => {
+  const app = buildApp()
+  const token = await loginToken(app)
+  const id = randomUUID()
+  const name = `Conflict ${id.slice(0, 8)}`
+  await push(app, token, [event(id, { payload: productPayload(name) })])
+
+  const editFromRevisionOne = (suffix: string) =>
+    push(app, token, [
+      event(id, {
+        operation: 'update',
+        baseRevision: 1,
+        payload: productPayload(`${name} ${suffix}`),
+      }),
+    ])
+
+  const phoneA = await editFromRevisionOne('from phone A')
+  const phoneB = await editFromRevisionOne('from phone B')
+
+  assert.equal(phoneA.json().results[0].status, 'applied')
+  assert.deepEqual(phoneB.json().results[0], {
+    eventId: phoneB.json().results[0].eventId,
+    status: 'conflict',
+    code: 'REVISION_CONFLICT',
   })
 
-  assert.equal(response.statusCode, 400)
+  const stored = await products(app, token, name)
+  assert.equal(stored.length, 1)
+  assert.equal(stored[0]!.name, `${name} from phone A`)
+  assert.equal(stored[0]!.revision, 2)
 })
 
-test('an unknown operation value is rejected', async () => {
+test('a delete from a stale revision is refused the same way', async () => {
   const app = buildApp()
   const token = await loginToken(app)
-
-  const response = await push(app, token, [
-    sampleEvent('evt-bad-2', 'prod-6', { operation: 'destroy' }),
-  ])
-
-  assert.equal(response.statusCode, 400)
-})
-
-// --- Conflict checking (Step 17) ---
-
-// Step 17's exact check, run through the real HTTP endpoint: edit the same
-// (test) record twice with the same base revision — the second one is
-// rejected.
-test('editing the same record twice with the same base_revision rejects the second edit over HTTP', async () => {
-  const app = buildApp()
-  const token = await loginToken(app)
-
-  await push(app, token, [sampleEvent('evt-conflict-create', 'prod-conflict')])
-
-  const firstEdit = await push(app, token, [
-    sampleEvent('evt-conflict-edit-1', 'prod-conflict', { operation: 'update', baseRevision: 1 }),
-  ])
-  assert.deepEqual(firstEdit.json().results, [
-    { eventId: 'evt-conflict-edit-1', status: 'applied' },
-  ])
-
-  const secondEdit = await push(app, token, [
-    sampleEvent('evt-conflict-edit-2', 'prod-conflict', { operation: 'update', baseRevision: 1 }),
-  ])
-  assert.deepEqual(secondEdit.json().results, [
-    { eventId: 'evt-conflict-edit-2', status: 'conflict', code: 'REVISION_CONFLICT' },
-  ])
-})
-
-test('a delete against a stale base_revision is rejected over HTTP, same as an update', async () => {
-  const app = buildApp()
-  const token = await loginToken(app)
-
-  await push(app, token, [sampleEvent('evt-conflict-create-2', 'prod-conflict-2')])
+  const id = randomUUID()
+  const name = `Stale delete ${id.slice(0, 8)}`
+  await push(app, token, [event(id, { payload: productPayload(name) })])
   await push(app, token, [
-    sampleEvent('evt-conflict-bump', 'prod-conflict-2', { operation: 'update', baseRevision: 1 }),
+    event(id, { operation: 'update', baseRevision: 1, payload: productPayload(name) }),
   ])
 
-  const staleDelete = await push(app, token, [
-    sampleEvent('evt-conflict-delete', 'prod-conflict-2', { operation: 'delete', baseRevision: 1 }),
-  ])
+  const response = await push(app, token, [event(id, { operation: 'delete', baseRevision: 1 })])
 
-  assert.deepEqual(staleDelete.json().results, [
-    { eventId: 'evt-conflict-delete', status: 'conflict', code: 'REVISION_CONFLICT' },
-  ])
+  assert.equal(response.json().results[0].status, 'conflict')
+  assert.equal((await products(app, token, name)).length, 1)
 })
 
-// --- Pull (Step 16) ---
+// A refused event must stay unclaimed, or the phone could never retry it.
+test('a refused event is not remembered as applied, so sending it again is checked again', async () => {
+  const app = buildApp()
+  const token = await loginToken(app)
+  const id = randomUUID()
+  await push(app, token, [event(id, { payload: productPayload(`Retry ${id.slice(0, 8)}`) })])
+  await push(app, token, [
+    event(id, { operation: 'update', baseRevision: 1, payload: productPayload('moved on') }),
+  ])
+
+  const stale = event(id, {
+    operation: 'update',
+    baseRevision: 1,
+    payload: productPayload('stale'),
+  })
+  const first = await push(app, token, [stale])
+  const again = await push(app, token, [stale])
+
+  assert.equal(first.json().results[0].status, 'conflict')
+  assert.equal(again.json().results[0].status, 'conflict')
+})
+
+test('a pushed delete leaves a tombstone the endpoints stop listing', async () => {
+  const app = buildApp()
+  const token = await loginToken(app)
+  const id = randomUUID()
+  const name = `Deleted ${id.slice(0, 8)}`
+  await push(app, token, [event(id, { payload: productPayload(name) })])
+
+  const response = await push(app, token, [event(id, { operation: 'delete', baseRevision: 1 })])
+
+  assert.equal(response.json().results[0].status, 'applied')
+  assert.deepEqual(await products(app, token, name), [])
+})
+
+// --- Pull (Steps 16, 33) ---
 
 test('GET /sync/changes requires a token', async () => {
   const app = buildApp()
@@ -183,71 +281,92 @@ test('GET /sync/changes requires a token', async () => {
   assert.equal(response.statusCode, 401)
 })
 
-test('GET /sync/changes with no cursor returns everything pushed so far', async () => {
+test('a pushed change comes back in a pull', async () => {
   const app = buildApp()
   const token = await loginToken(app)
+  const id = randomUUID()
+  await push(app, token, [event(id, { payload: productPayload(`Pulled ${id.slice(0, 8)}`) })])
 
-  await push(app, token, [
-    sampleEvent('evt-pull-1', 'prod-pull-1'),
-    sampleEvent('evt-pull-2', 'prod-pull-2'),
-  ])
+  const body = (await pull(app, token)).json()
+  const mine = body.events.filter((e: { entityId: string }) => e.entityId === id)
 
-  const response = await app.inject({
-    method: 'GET',
-    url: '/sync/changes',
-    headers: { authorization: `Bearer ${token}` },
-  })
-
-  assert.equal(response.statusCode, 200)
-  const body = response.json()
-  // "Everything" for this shop also includes events from earlier tests in
-  // this file (eventLog is one shared store for the whole process, same as
-  // real usage) — so check these two are present, not that they are the
-  // only ones.
-  const ids = body.events.map((event: { eventId: string }) => event.eventId)
-  assert.ok(ids.includes('evt-pull-1'))
-  assert.ok(ids.includes('evt-pull-2'))
-  assert.ok(ids.indexOf('evt-pull-1') < ids.indexOf('evt-pull-2'))
+  assert.equal(mine.length, 1)
+  assert.equal(mine[0].operation, 'create')
+  assert.equal(mine[0].entityType, 'Product')
+  assert.equal(mine[0].payload.name, `Pulled ${id.slice(0, 8)}`)
   assert.ok(body.cursor > 0)
 })
 
-// Step 16's exact check: calling it again with the returned cursor returns
-// nothing new (until something changes).
-test('GET /sync/changes with the returned cursor returns nothing new, until something changes', async () => {
+// Step 33's exact check: made through the REST endpoint, not pushed as an
+// event, and a phone still learns about it.
+test('a product created through the product endpoint also comes back in a pull', async () => {
   const app = buildApp()
   const token = await loginToken(app)
+  const before = (await pull(app, token)).json().cursor
+  const id = randomUUID()
+  const name = `Rest made ${id.slice(0, 8)}`
 
-  await push(app, token, [sampleEvent('evt-pull-3', 'prod-pull-3')])
-
-  const first = await app.inject({
-    method: 'GET',
-    url: '/sync/changes',
+  await app.inject({
+    method: 'POST',
+    url: '/products',
     headers: { authorization: `Bearer ${token}` },
+    payload: { id, ...productPayload(name) },
   })
-  const cursor = first.json().cursor
 
-  const second = await app.inject({
-    method: 'GET',
-    url: `/sync/changes?after=${cursor}`,
-    headers: { authorization: `Bearer ${token}` },
-  })
-  assert.deepEqual(second.json().events, [])
-  assert.equal(second.json().cursor, cursor)
+  const body = (await pull(app, token, before)).json()
+  const mine = body.events.filter((e: { entityId: string }) => e.entityId === id)
 
-  await push(app, token, [sampleEvent('evt-pull-4', 'prod-pull-4')])
-
-  const third = await app.inject({
-    method: 'GET',
-    url: `/sync/changes?after=${cursor}`,
-    headers: { authorization: `Bearer ${token}` },
-  })
-  assert.deepEqual(
-    third.json().events.map((event: { eventId: string }) => event.eventId),
-    ['evt-pull-4'],
-  )
+  assert.equal(mine.length, 1)
+  assert.equal(mine[0].operation, 'create')
+  assert.equal(mine[0].payload.name, name)
 })
 
-test('GET /sync/changes rejects a non-numeric cursor', async () => {
+test('asking again with the returned cursor does not repeat what was already seen', async () => {
+  const app = buildApp()
+  const token = await loginToken(app)
+  const id = randomUUID()
+  await push(app, token, [event(id, { payload: productPayload(`Cursor ${id.slice(0, 8)}`) })])
+
+  const first = (await pull(app, token)).json()
+  assert.ok(first.events.some((e: { entityId: string }) => e.entityId === id))
+
+  const second = (await pull(app, token, first.cursor)).json()
+  assert.ok(!second.events.some((e: { entityId: string }) => e.entityId === id))
+
+  const editId = randomUUID()
+  await push(app, token, [
+    event(editId, {
+      entityId: id,
+      operation: 'update',
+      baseRevision: 1,
+      payload: productPayload(`Cursor ${id.slice(0, 8)} edited`),
+    }),
+  ])
+
+  const third = (await pull(app, token, first.cursor)).json()
+  const mine = third.events.filter((e: { entityId: string }) => e.entityId === id)
+  assert.equal(mine.length, 1)
+  assert.equal(mine[0].operation, 'update')
+  assert.equal(mine[0].baseRevision, 1)
+})
+
+test('a deletion is something a pull tells other devices about', async () => {
+  const app = buildApp()
+  const token = await loginToken(app)
+  const id = randomUUID()
+  await push(app, token, [event(id, { payload: productPayload(`Tombstone ${id.slice(0, 8)}`) })])
+  const before = (await pull(app, token)).json().cursor
+  await push(app, token, [event(id, { operation: 'delete', baseRevision: 1 })])
+
+  const body = (await pull(app, token, before)).json()
+  const mine = body.events.filter((e: { entityId: string }) => e.entityId === id)
+
+  assert.equal(mine.length, 1)
+  assert.equal(mine[0].operation, 'delete')
+  assert.notEqual(mine[0].payload.deletedAt, null)
+})
+
+test('GET /sync/changes rejects a cursor that is not a number', async () => {
   const app = buildApp()
   const token = await loginToken(app)
 
@@ -260,23 +379,14 @@ test('GET /sync/changes rejects a non-numeric cursor', async () => {
   assert.equal(response.statusCode, 400)
 })
 
-// The same tenant-isolation rule as everywhere else (D015): a shop only
-// ever sees its own events, never another shop's.
-test('GET /sync/changes never returns another shop', async () => {
+test('a pull never returns another shop changes', async () => {
   const app = buildApp()
-  const tokenShop1 = await loginToken(app, 'rahim@example.com', 'correct-horse-1')
-  const tokenShop2 = await loginToken(app, 'karim@example.com', 'correct-horse-2')
+  const shopOne = await loginToken(app)
+  const shopTwo = await loginToken(app, 'karim@example.com', 'correct-horse-2')
+  const id = randomUUID()
+  await push(app, shopOne, [event(id, { payload: productPayload(`Private ${id.slice(0, 8)}`) })])
 
-  await push(app, tokenShop1, [sampleEvent('evt-shop1-only', 'prod-shop1')])
-  await push(app, tokenShop2, [sampleEvent('evt-shop2-only', 'prod-shop2')])
+  const seenByOther = (await pull(app, shopTwo)).json().events
 
-  const responseShop1 = await app.inject({
-    method: 'GET',
-    url: '/sync/changes',
-    headers: { authorization: `Bearer ${tokenShop1}` },
-  })
-
-  const eventIds = responseShop1.json().events.map((event: { eventId: string }) => event.eventId)
-  assert.ok(eventIds.includes('evt-shop1-only'))
-  assert.ok(!eventIds.includes('evt-shop2-only'))
+  assert.ok(!seenByOther.some((e: { entityId: string }) => e.entityId === id))
 })

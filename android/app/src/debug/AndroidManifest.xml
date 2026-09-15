@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Debug builds only. A development server on a laptop has no certificate,
+     so plain HTTP has to be allowed to test syncing. Release builds do not
+     get this, so a shipped app cannot silently send a shop's data
+     unencrypted (docs/SECURITY.md). -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application android:usesCleartextTraffic="true" />
+
+</manifest>

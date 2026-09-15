@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.Query
 import androidx.room.Update
+import androidx.room.Upsert
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -13,6 +14,10 @@ interface ProductDao {
 
     @Update
     suspend fun update(product: ProductEntity)
+
+    /** Saving what the server sent: the row may or may not be here yet (Step 33). */
+    @Upsert
+    suspend fun upsert(product: ProductEntity)
 
     @Query("SELECT * FROM product WHERE id = :id")
     suspend fun byId(id: String): ProductEntity?

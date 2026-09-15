@@ -1,6 +1,10 @@
 package com.hisab.app.data.product
 
+import androidx.room.withTransaction
+import com.hisab.app.data.HisabDatabase
 import com.hisab.app.data.LOCAL_SHOP_ID
+import com.hisab.app.data.sync.ProductSyncPayload
+import com.hisab.app.data.sync.SyncOutboxEntity
 import com.hisab.app.domain.EntityId
 import com.hisab.app.domain.Money
 import com.hisab.app.domain.ProductUnits
@@ -39,25 +43,30 @@ sealed interface ProductWriteResult {
  * forward, a stale-revision write that is rejected instead of overwriting
  * (D017), and deletion as a tombstone rather than a removed row.
  *
- * Everything here is local. Sending these changes to the server is Step 32,
- * not this step, so nothing here touches the network — which is also why an
- * add works the same offline as online.
+ * Each write also queues a sync event in the same database transaction
+ * (D003): either both the product change and the queued event are saved, or
+ * neither is, so a change can never be made without something to send. The
+ * sending itself happens later and elsewhere (SyncEngine) — nothing here
+ * touches the network, which is why saving works the same offline.
  */
 class ProductRepository(
-    private val dao: ProductDao,
+    private val database: HisabDatabase,
     private val clock: Clock = Clock.systemUTC(),
     private val shopId: String = LOCAL_SHOP_ID,
 ) {
+    private val products = database.productDao()
+    private val outbox = database.syncOutboxDao()
+
     fun observe(
         query: String = "",
         includeInactive: Boolean = false,
-    ): Flow<List<ProductEntity>> = dao.observe(shopId, query.trim(), includeInactive)
+    ): Flow<List<ProductEntity>> = products.observe(shopId, query.trim(), includeInactive)
 
-    suspend fun byId(id: EntityId): ProductEntity? = dao.byId(id.value)
+    suspend fun byId(id: EntityId): ProductEntity? = products.byId(id.value)
 
     suspend fun create(draft: ProductDraft): ProductWriteResult.Saved {
         val id = generateId()
-        dao.insert(
+        val product =
             ProductEntity(
                 id = id.value,
                 shopId = shopId,
@@ -70,8 +79,12 @@ class ProductRepository(
                 revision = FIRST_REVISION,
                 updatedAt = now(),
                 deletedAt = null,
-            ),
-        )
+            )
+
+        database.withTransaction {
+            products.insert(product)
+            outbox.insert(queued(product, OPERATION_CREATE, baseRevision = null))
+        }
         return ProductWriteResult.Saved(id, FIRST_REVISION)
     }
 
@@ -80,7 +93,7 @@ class ProductRepository(
         baseRevision: Int,
         draft: ProductDraft,
     ): ProductWriteResult =
-        write(id, baseRevision) { current ->
+        write(id, baseRevision, OPERATION_UPDATE) { current ->
             current.copy(
                 name = draft.name.trim(),
                 aliases = cleanAliases(draft.aliases),
@@ -96,41 +109,70 @@ class ProductRepository(
         id: EntityId,
         baseRevision: Int,
         active: Boolean,
-    ): ProductWriteResult = write(id, baseRevision) { current -> current.copy(active = active) }
+    ): ProductWriteResult = write(id, baseRevision, OPERATION_UPDATE) { current -> current.copy(active = active) }
 
-    /** A tombstone, not a removed row, so the deletion can sync later like any other change (D017). */
+    /** A tombstone, not a removed row, so the deletion can sync like any other change (D017). */
     suspend fun delete(
         id: EntityId,
         baseRevision: Int,
     ): ProductWriteResult {
         val deletedAt = now()
-        return write(id, baseRevision, timestamp = deletedAt) { current ->
+        return write(id, baseRevision, OPERATION_DELETE, timestamp = deletedAt) { current ->
             current.copy(deletedAt = deletedAt)
         }
     }
 
+    /**
+     * Saves a product the server sent (Step 33). No sync event is queued: this
+     * change came from the server, so sending it back would be an echo. The
+     * server's revision is kept, which is what later edits are checked against.
+     */
+    suspend fun applyFromServer(product: ProductEntity) {
+        products.upsert(product.copy(shopId = shopId))
+    }
+
     /** Really removes a row. Used to clean up after tests, and later to purge synced tombstones. */
-    suspend fun purge(id: EntityId) = dao.hardDelete(id.value)
+    suspend fun purge(id: EntityId) = products.hardDelete(id.value)
 
     private suspend fun write(
         id: EntityId,
         baseRevision: Int,
+        operation: String,
         timestamp: Instant = now(),
         change: (ProductEntity) -> ProductEntity,
     ): ProductWriteResult {
-        val current = dao.byId(id.value) ?: return ProductWriteResult.NotFound
+        val current = products.byId(id.value) ?: return ProductWriteResult.NotFound
         if (checkRevision(current.revision, baseRevision) !is RevisionCheckResult.Ok) {
             return ProductWriteResult.Conflict
         }
 
-        val next =
-            change(current).copy(
-                revision = current.revision + 1,
-                updatedAt = timestamp,
-            )
-        dao.update(next)
+        val next = change(current).copy(revision = current.revision + 1, updatedAt = timestamp)
+        database.withTransaction {
+            products.update(next)
+            outbox.insert(queued(next, operation, baseRevision = current.revision, at = timestamp))
+        }
         return ProductWriteResult.Saved(id, next.revision)
     }
+
+    /**
+     * The change, ready to send. `baseRevision` is the revision the edit was
+     * made from — the server refuses it if the product has moved on since
+     * (D017).
+     */
+    private fun queued(
+        product: ProductEntity,
+        operation: String,
+        baseRevision: Int?,
+        at: Instant = now(),
+    ) = SyncOutboxEntity(
+        eventId = generateId().value,
+        entityType = ENTITY_TYPE_PRODUCT,
+        entityId = product.id,
+        operation = operation,
+        payload = ProductSyncPayload.toJson(product),
+        baseRevision = baseRevision,
+        clientTimestamp = at,
+    )
 
     private fun now(): Instant = clock.instant()
 
@@ -142,5 +184,9 @@ class ProductRepository(
 
     companion object {
         const val FIRST_REVISION = 1
+        const val ENTITY_TYPE_PRODUCT = "Product"
+        const val OPERATION_CREATE = "create"
+        const val OPERATION_UPDATE = "update"
+        const val OPERATION_DELETE = "delete"
     }
 }
