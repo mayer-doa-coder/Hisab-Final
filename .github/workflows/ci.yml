@@ -30,10 +30,23 @@ jobs:
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v4
+        with:
+          # Install nothing here, on purpose. This action's default for
+          # `packages` is "tools platform-tools", and Google has stopped
+          # serving the legacy `tools` package — a missing package is fatal to
+          # sdkmanager, so the action fails inside itself before any step of
+          # ours runs ("Warning: Failed to find package 'tools'", exit code 1).
+          # Nothing in this build needs `tools`: it is the old standalone SDK
+          # tools bundle, replaced by cmdline-tools, which the action installs
+          # regardless of this input. Everything we actually need is named and
+          # pinned in the next step instead, in one place.
+          packages: ''
 
       - name: Install SDK platform and build-tools
         # Versions pinned to match DECISIONS.md D025 (compileSdk 36).
-        run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
+        # platform-tools is listed here because the step above no longer
+        # installs it — see the comment there.
+        run: sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0"
 
       - uses: gradle/actions/setup-gradle@v6
 

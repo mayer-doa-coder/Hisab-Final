@@ -19,7 +19,11 @@ export const UNKNOWN_ENTITY = 'UNKNOWN_ENTITY'
 export type ApplyOutcome =
   | { readonly eventId: string; readonly status: 'applied' }
   | { readonly eventId: string; readonly status: 'already-applied' }
-  | { readonly eventId: string; readonly status: 'conflict'; readonly code: typeof REVISION_CONFLICT }
+  | {
+      readonly eventId: string
+      readonly status: 'conflict'
+      readonly code: typeof REVISION_CONFLICT
+    }
   | { readonly eventId: string; readonly status: 'rejected'; readonly code: string }
 
 /**
@@ -91,10 +95,7 @@ function toProductInput(payload: unknown): ProductInput | null {
   }
 }
 
-async function applyProductEvent(
-  shopId: string,
-  event: SyncEventEnvelope,
-): Promise<ApplyOutcome> {
+async function applyProductEvent(shopId: string, event: SyncEventEnvelope): Promise<ApplyOutcome> {
   const rejected = (code: string): ApplyOutcome => ({
     eventId: event.eventId,
     status: 'rejected',
@@ -131,10 +132,7 @@ async function applyProductEvent(
  * never applied twice; an event whose base revision is stale is refused and
  * left unclaimed, so the phone can retry it after pulling.
  */
-export async function applyEvent(
-  shopId: string,
-  event: SyncEventEnvelope,
-): Promise<ApplyOutcome> {
+export async function applyEvent(shopId: string, event: SyncEventEnvelope): Promise<ApplyOutcome> {
   if (event.entityType !== 'Product') {
     return { eventId: event.eventId, status: 'rejected', code: UNSUPPORTED_ENTITY }
   }

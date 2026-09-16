@@ -15,7 +15,6 @@ import com.hisab.app.pinBanglaOnFirstRun
 import com.hisab.app.pinBanglaOnFirstRunOnce
 import com.hisab.app.resetFirstRunPinForTest
 import com.hisab.app.setAppLanguage
-import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -36,10 +35,11 @@ class HomeScreenTest {
     private val banglaTitle = "হিসাবে স্বাগতম"
     private val englishTitle = "Welcome to Hisab"
 
-    @After
-    fun restoreBangla() {
-        composeRule.activityRule.scenario.onActivity { setAppLanguage(AppLanguage.BANGLA) }
-    }
+    // No @After that touches the Activity: changing the language restarts it,
+    // and asking for the Activity while that restart is in flight waits for
+    // "the app is idle" with no timeout — which hung a whole test run at
+    // Step 34. Instead, every test below does its work in one block and
+    // leaves the language on Bangla for the next one.
 
     // Everything in one block on the main thread: clearing the language
     // restarts the Activity, and waiting for the screen to settle across that
@@ -67,14 +67,16 @@ class HomeScreenTest {
 
     @Test
     fun pinningDoesNotOverrideAChosenLanguage() {
-        composeRule.activityRule.scenario.onActivity { setAppLanguage(AppLanguage.ENGLISH) }
-        waitForText(englishTitle)
-
         composeRule.activityRule.scenario.onActivity {
+            setAppLanguage(AppLanguage.ENGLISH)
+
+            // Someone who chose English keeps English, however often the
+            // startup pinning runs.
             pinBanglaOnFirstRun()
             assertEquals(AppLanguage.ENGLISH, currentAppLanguage())
+
+            setAppLanguage(AppLanguage.BANGLA)
         }
-        composeRule.onNodeWithText(englishTitle).assertIsDisplayed()
     }
 
     // Pinning happens once per app start. Without this, the Activity restart
@@ -97,6 +99,8 @@ class HomeScreenTest {
                 LocaleListCompat.getEmptyLocaleList(),
                 AppCompatDelegate.getApplicationLocales(),
             )
+
+            setAppLanguage(AppLanguage.BANGLA)
         }
     }
 

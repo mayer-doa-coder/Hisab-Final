@@ -44,6 +44,24 @@ Versions use semantic versioning. The first public research release will be `v1.
 - Per-script fonts extended to text the user typed: `scriptAwareText` splits a string word by word, so "চিনি 1kg" renders each part in its own font, including inside text fields (D010).
 - Tests: 34 new unit tests (money parsing/formatting, form validation, script splitting) and 4 new instrumented test classes (DAO, repository, the 1→2 migration, and the product screens end to end).
 
+### Fixed (M1 test reliability)
+- The device test run could hang for good: two home-screen tests asked for the Activity right after a language change, which restarts it, and that wait has no timeout. Each test now does its work in one block and leaves the language on Bangla, and runs are given a per-test time limit.
+- A sync test asserted the wrong thing: it told the stand-in server to report a new position while giving it nothing to send, so the server correctly reported the old one.
+
+### Fixed (CI)
+- The Android job failed inside `android-actions/setup-android@v4` before any of our own steps ran: `Warning: Failed to find package 'tools'`, then `sdkmanager ... failed with exit code 1`. The action's default `packages` input is still `tools platform-tools`, and Google has stopped serving the legacy standalone `tools` bundle (replaced by `cmdline-tools`), so sdkmanager now treats it as a missing package and exits 1. Not caused by anything in this repository - it broke on its own when the remote SDK index changed. The action is now given `packages: ''` so it installs nothing itself, and `platform-tools` moved into the existing explicit, version-pinned `sdkmanager` step, so everything the build needs is named in one place.
+- `npm run format:check` was failing on two committed server files that Prettier had never been run over (`src/modules/sync/syncService.ts`, `src/modules/sync/routes.test.ts`). Reformatted; the change is whitespace only (`git diff -w` is empty) and all 142 server tests still pass.
+
+### Added (M2 — Sale and Stock, Steps 35-38)
+- Stock as a ledger, on both sides (`android/.../domain/Stock.kt`, `server/src/domain/stock.ts`): `restock`, `sell`, `returnStock`, `damage`, `correctStock`, `calculateCurrentStock`, and `stockShortfall`. No stock column exists anywhere - current stock is always the sum of the movements (D020). A correction is a shelf count rather than a typed difference, so the number a person enters is one they can see (Step 35).
+- Sales as plain functions, on both sides (`android/.../domain/Sale.kt`, `server/src/domain/sale.ts`): `calculateLineTotal`, `calculateSaleTotal`, `completeCashSale`, `completeCreditSale`, `reverseSale`. A completed sale is a single value holding the sale, its lines, its stock movements and (on credit) its baki entry, and it refuses to exist unless all of them agree - so there is no way to build a reversal that restores stock and leaves the baki standing (D021, Step 36).
+- `fixtures/m2_sale_stock.tsv`: 29 shared fixture cases, read at run time by both the Kotlin and the TypeScript test suites, so neither side can drift by keeping its own numbers (D034, Step 37).
+- `sale`, `sale_item` and `stock_movement` tables in Room - database version 3, hand-written `MIGRATION_2_3`, schema 3 exported. `sale_item` has a foreign key to `sale`; current stock is a `COALESCE(SUM(...))` query, which is D020 written in SQL. Neither DAO has an update or a delete, because confirmed history is never rewritten (Step 38).
+- `BakiEntry` shape on both sides, with the entries a credit sale and its reversal produce. The baki ledger functions and its table are still M3 - only what a credit sale needs exists now (Step 36, D021).
+- Tests: 45 new Android unit tests and 68 new server tests (100 and 142 in total, 0 failures), plus 16 new instrumented tests awaiting a device run.
+- `DECISIONS.md` D031-D034: a sale is never blocked by low stock and stock may go negative; line totals round half away from zero, per line; a reversal is a second, opposite sale rather than an edit; one fixture file read by both languages.
+- `docs/DATA_MODEL.md`: Sale gains `payment`, `customer_id` and `reverses_sale_id`, which PRD section 8 requires and the first draft of that file had not named (D033).
+
 ### Added (M1 — Sync, Steps 31–34)
 - `scripts/check-room-schema.sh`, run in CI after the Android build: the declared database version must match the newest exported schema, every version step must have a registered migration, and the exported files must match the committed ones. Verified by deliberately changing an entity without a migration and watching it fail (Step 31).
 - Every product write queues a sync event in the same database transaction as the change itself (D003), so there can never be a change with nothing to send (Step 32).

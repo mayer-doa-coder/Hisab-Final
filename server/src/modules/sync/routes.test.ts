@@ -28,10 +28,7 @@ function productPayload(name: string, overrides: Record<string, unknown> = {}) {
   }
 }
 
-function event(
-  entityId: string,
-  overrides: Record<string, unknown> = {},
-): Record<string, unknown> {
+function event(entityId: string, overrides: Record<string, unknown> = {}): Record<string, unknown> {
   return {
     eventId: randomUUID(),
     entityType: 'Product',
@@ -101,7 +98,9 @@ test('a pushed create becomes a product the endpoints can see', async () => {
   const name = `Pushed ${id.slice(0, 8)}`
 
   const response = await push(app, token, [
-    event(id, { payload: productPayload(name, { sellingPricePoisha: 8500, aliases: ['pushalias'] }) }),
+    event(id, {
+      payload: productPayload(name, { sellingPricePoisha: 8500, aliases: ['pushalias'] }),
+    }),
   ])
 
   assert.equal(response.statusCode, 200)

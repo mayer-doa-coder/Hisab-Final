@@ -299,3 +299,60 @@ Rejected: node-pg-migrate, Drizzle, Prisma. They are bigger tools that would own
 - Timestamps are `TIMESTAMPTZ`, returned as ISO-8601 strings.
 - Every query is written with `shop_id` in the WHERE clause, taken from the session token and never from the request (D015).
 - Queries always use parameters, never strings built by hand.
+---
+
+## D031 — A Sale Is Never Blocked by Stock; Stock May Go Negative
+Decision: `sell()` records what happened. It does not check current stock, and nothing refuses a sale because the ledger says there is not enough. If more is sold than was ever recorded, current stock goes negative and stays negative until a restock or a shelf count (`correctStock`) explains it. The New Sale screen warns before confirming, using `stockShortfall()`, but the warning never becomes a refusal.
+
+Rejected: refusing to record a sale that would take stock below zero.
+
+Reason: the shopkeeper is at the counter with the goods in their hand. The goods are leaving whether or not the ledger agrees, so refusing to record the sale does not prevent anything — it only makes the ledger wrong about the real world, and loses the money record too. Negative stock is information: it says the ledger is missing a restock, which is exactly the thing a shelf count fixes. This is also the honest starting state for a real shop, where products exist long before anyone enters an opening quantity.
+
+This is a configurable switch in commercial POS systems ("allow negative inventory"), usually turned off for warehouses that must not oversell online, and on for over-the-counter retail. Hisab is over-the-counter retail, offline, where the counter is the source of truth — so it is on, and not configurable, because there is no case here where blocking the shopkeeper is the right answer.
+
+Sources: [Deal POS — Allow or disallow negative inventory](https://support.dealpos.com/en/articles/4774060-allow-or-disallow-negative-inventory); [Shopify POS — negative inventory behaviour when offline](https://community.shopify.dev/t/pos-ship-to-customer-ignores-inventory-constraints-and-allows-negative-stock/20739).
+
+---
+
+## D032 — A Line Total Rounds Half Away From Zero, Per Line
+Decision: a sale line costs `quantityScaled x unitPricePoisha / 1000`, in integer arithmetic. When that division lands exactly halfway between two poisha, it rounds **away from zero** (+0.5 → +1, −0.5 → −1). Each line is rounded on its own and the rounded lines are then added; the sale total is never computed by rounding once at the end.
+
+Rejected, rounding: half upward (toward +∞), and truncation toward zero.
+Rejected, timing: totalling in exact arithmetic and rounding once at the end.
+
+Reason:
+- **Why away from zero.** A reversal is a line with a negative quantity (D033). 1.25 kg at 90.50 taka is 113.125 taka. Rounding half upward charges 113.13 and refunds 113.12, leaving one poisha behind on every reversed half-poisha line — money that belongs to nobody and that no screen can explain. Away from zero refunds exactly what was charged, so a reversal nets to zero. `reverseSale` is only correct because of this choice, and there is a test that pairs the two directions.
+- **Why per line.** A shopkeeper checks a bill by adding the printed lines. If the total were rounded separately, the printed lines could add up to one poisha less than the printed total, and the shop would be right and the app wrong. Two lines of 1.25 kg at 90.50 come to 226.26 by this rule and 226.25 by rounding once at the end; 226.26 is what the receipt shows.
+
+Everything stays integer, so D019 holds: no float touches money or quantity, and no rounding error accumulates over a day's sales.
+
+---
+
+## D033 — A Reversal Is a Second, Opposite Sale
+Decision: undoing a sale never edits or deletes the original. It writes a second Sale with a negative total, negative-quantity SaleItems, positive `return` StockMovements referencing the original sale, and — for a credit sale — a BakiEntry that subtracts exactly what the sale added. `reverseSale()` returns all of these in one `SaleTransaction` value, and the phone writes them in one database transaction.
+
+This requires three fields on Sale that `docs/DATA_MODEL.md` had not named, added there in the same change:
+- `payment` (cash or credit) — PRD section 8 requires choosing one, and a reversal cannot know whether to clear baki without it;
+- `customer_id` (nullable) — PRD section 8 requires associating a customer with a credit sale;
+- `reverses_sale_id` (nullable) — the id of the sale being undone.
+
+Rejected: a `reversed` flag on the original Sale (it would edit confirmed history, which `CLAUDE.md` forbids). Rejected: recording only the compensating stock and baki entries and leaving the Sale table alone — then a day's takings would still include the reversed sale, and the only fix would be a special case in every sales query.
+
+Reason: append-only is the same rule the stock and baki ledgers already follow (D001, D002), and it makes the sales ledger self-correcting: summing `total` over a day already excludes anything reversed, because the reversal's negative total is sitting in the same column. `reverses_sale_id` is what answers "has this already been undone?" without a flag, and what lets a reversal be found from the sale it undoes.
+
+D021's atomicity is enforced by the shape rather than by remembering: `SaleTransaction` refuses to exist unless a credit sale has both a customer and a baki entry for exactly the sale total, and unless every line has its stock movement. There is no way to construct a reversal that restores stock and leaves the baki standing — a test asserts each of those constructions throws.
+
+A reversal cannot itself be reversed; undoing an undo is a new sale. Whether a sale has *already* been reversed is a question about stored rows, so `SaleDao.reversalOf()` answers it, not the pure function.
+
+This matches how inventory and accounting systems handle corrections generally: posted entries stay immutable and a compensating entry is appended, rather than the original being rewritten.
+
+Sources: [User Solutions — what an append-only inventory ledger is](https://usersolutions.com/blog/what-is-an-inventory-ledger); [Gravity Payments — void vs. refund](https://gravitypayments.com/blog/void-vs-refund/).
+
+---
+
+## D034 — One Fixture File, Read by Both Kotlin and TypeScript
+Decision: the numbers that Android and the backend must agree on live in one plain tab-separated file, `fixtures/m2_sale_stock.tsv`. Both test suites read that file at run time — `android/.../domain/SharedFixtureTest.kt` and `server/src/domain/sharedFixture.test.ts` — and each walks up from its working directory to find it, so it does not matter where the tests are launched from.
+
+Rejected: writing the same cases twice, once in each language. Rejected: JSON, which would need a parser dependency on the Kotlin side (`CLAUDE.md`: add a library only if clearly necessary) — a tab-separated line splits in three lines of code in both languages.
+
+Reason: `docs/PHASE_GUIDE.md` Step 37 asks for the same fixture to pass on both implementations. Two hand-kept copies satisfy that on the day they are written and quietly stop meaning anything the first time one is edited. Reading the real file means a case added to the fixture runs on both sides immediately, and neither side can pass by keeping its own numbers. Proved by changing a number in the file and watching both suites fail on it.

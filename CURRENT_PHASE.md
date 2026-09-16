@@ -1,25 +1,40 @@
 # Current Phase
 
-M1 — Product (Steps 23–34)
+M2 — Sale and Stock (Steps 35–47)
 
-Steps 23–27 are built. M0 (Steps 1–22) is finished and verified locally; its one remaining check needs a push: CI green on GitHub.
+Steps 35–38 are built. M0 (Steps 1–22) is finished and verified locally; its one remaining check needs a push: CI green on GitHub. M1 (Steps 23–34) is built, with two checks still owed — listed under "Owed from M1" below.
 
 `docs/PHASE_GUIDE.md` has the exact steps, in order, each with its own check. This file just tracks which step you're on — the step list itself lives in one place only, so don't copy it here.
 
 ## Objective
-Build Product end to end — local table, screens, then the backend and sync wiring — as the first real feature to flow through the M0 sync foundation.
+Build Sale and Stock end to end — the rules first, then the local tables, then the screens and the backend — as ledgers that are only ever added to, never edited.
 
 ## Current Step
-M1 (Steps 23–34) is built. Two checks are still owed before it can be called done:
+Steps 35–38 are built and checked. Step 39 (New Sale screen — cash) is next.
 
+One check is owed on Step 38: `connectedDebugAndroidTest` with the phone attached, for `SaleStockDaoTest` (14 tests) and `SaleStockMigrationTest` (2). They compile, and the domain rules underneath them pass on the JVM, but the insert/read check Step 38 asks for is a real run on hardware.
+
+One repository chore before the next push: `android/app/schemas/com.hisab.app.data.HisabDatabase/3.json` is new and untracked, so `scripts/check-room-schema.sh` fails until it is committed. That is the check doing its job, not a defect.
+
+### Owed from M1
 1. **Step 28** — add, edit and search on the phone with airplane mode on. Nothing in the local path touches the network, but the check is a real run, not an argument.
-2. **Steps 32–34 on the device** — the phone was unplugged when the device suite was due to run. Needed: `connectedDebugAndroidTest` with the phone attached, the server running (`npm start`) and `adb reverse tcp:3000 tcp:3000`, which also runs the real end-to-end sync test.
+2. **Step 33 by hand** — a product made on the server appearing on the phone after a sync. Steps 32 and 34 were already seen by hand (a phone-made product reached the server; an edit made on the PC won over a stale phone edit).
 
-Then M2 — Sale and Stock (Step 35 onward).
+Device suite at the end of M1: **61 tests, 0 failures, 0 skipped** on the Galaxy A15, including three end-to-end tests that ran against the real server and Postgres over `adb reverse`.
 
-Two checks are still owed from earlier steps:
-- Push, then confirm CI is green and that the server job's "Unit tests" step reports 68 tests, not 21 (Step 22).
-- Re-run `connectedDebugAndroidTest` for the Product tests: the phone went into "unauthorized" USB-debugging state before they could run (Steps 23–27).
+### Owed from M0
+- Push, then confirm CI is green and that the server job's "Unit tests" step reports the full count, not 21 (Step 22).
+
+Two CI failures were fixed on the way here, neither caused by this work:
+- The Android job died inside `android-actions/setup-android@v4`, which still asks for the legacy `tools` package that Google no longer serves. The action is now told to install nothing (`packages: ''`) and `platform-tools` moved into the explicit, pinned `sdkmanager` step.
+- `npm run format:check` was failing on two committed server sync files Prettier had never been run over. Reformatted; whitespace only.
+
+## M2 — Sale and Stock, done so far
+- Step 35 — the stock functions (`domain/Stock.kt`, `server/src/domain/stock.ts`): `restock`, `sell`, `returnStock`, `damage`, `correctStock`, `calculateCurrentStock`, plus `stockShortfall`. Stock is the sum of movements and nothing else (D020) — there is no stock column anywhere, on either side. A correction is a shelf count (what is actually there) rather than a typed difference, so the number a person enters is one they can see. A sale is never blocked by low stock and stock may go negative (D031, researched against how commercial POS systems handle this).
+- Step 36 — the sale functions (`domain/Sale.kt`, `server/src/domain/sale.ts`): `calculateLineTotal`, `calculateSaleTotal`, `completeCashSale`, `completeCreditSale`, `reverseSale`. A line total rounds half away from zero, per line, so a reversal gives back exactly what it charged and the printed lines add up to the printed total (D032). A completed sale is one value holding the sale, its lines, its stock movements and (on credit) its baki entry, and that value refuses to exist if any of them is missing or disagrees — D021 enforced by shape rather than by remembering. A reversal is a second, opposite sale, never an edit (D033).
+- Step 37 — one fixture file, `fixtures/m2_sale_stock.tsv`, read at run time by both suites (D034). 29 cases covering line totals, sale totals, stock balances, corrections, credit sales and reversals. **Proved by breaking it**: a number was changed in the file and both the Kotlin and the TypeScript suite failed on that case, then passed again when it was restored.
+- Step 38 — `sale`, `sale_item` and `stock_movement` tables in Room (database version 3, hand-written `MIGRATION_2_3`, no destructive fallback), with schema 3 exported. `sale_item` has a foreign key to `sale`, so a line cannot exist without its sale. Current stock is a `SUM` query with `COALESCE`, so a product that never moved reads as zero — D020 written in SQL. There is no update and no delete on either DAO: confirmed history is never rewritten.
+- Test counts after this work: **100 Android unit tests** and **142 server tests**, 0 failures on both (read from the result XML, not from "BUILD SUCCESSFUL"). Android lint reports no issues; Spotless and ESLint pass.
 
 ## M1 — Product, done so far
 - Steps 23–24 — `product` table in Room (`data/product/`), reached only through `ProductRepository`, which owns the rules: device-made id (D018), revision starting at 1, a stale-revision write rejected instead of applied (D017), deletion as a tombstone, and aliases trimmed and de-duplicated. Database version 2 with a hand-written migration (no destructive fallback), matching the exported schema exactly.
@@ -100,17 +115,18 @@ Done so far:
   - **CI now builds the real APK** (`assembleDebug`) and compiles the on-phone tests, instead of only compiling Kotlin.
 
 ## Allowed Right Now
-Anything in M1 (Steps 23–34 of `docs/PHASE_GUIDE.md`) — the Product table and screens, Product in Postgres, the product endpoints, and wiring Product saves and loads through the sync endpoints from M0.
+Anything in M2 (Steps 35–47 of `docs/PHASE_GUIDE.md`) — the sale and stock rules, their Room tables, the New Sale/Stock/History screens, reversal, the Postgres tables and the sale and stock endpoints. Finishing the two M1 checks above also stays in scope.
 
 ## Not Allowed Right Now
-- Sale, Stock, Baki and the rest — those are M2 onward.
+- Customer and Baki screens, and the baki functions (`addCredit`, `receivePayment`, `calculateBalance`, `isOverdue`) — M3, Steps 48–61. A credit sale must still create its BakiEntry correctly, which is why the entry's shape exists now and the ledger functions do not.
+- Ask Hisab, forecasting, suggestions — M5/M6.
 - Full security hardening (rate limiting, token rotation, threat testing) — still M7.
 
-## Definition of Done for M1
-Every check in Steps 23–34 passes — see `docs/PHASE_GUIDE.md` for each one individually.
+## Definition of Done for M2
+Every check in Steps 35–47 passes — see `docs/PHASE_GUIDE.md` for each one individually.
 
 ## Next
-Step 28 (airplane mode), then the backend half: Product in Postgres (29), the product endpoints (30), schema/migration checks in CI (31), and Product through push, pull and conflict (32–34).
+Step 39 (New Sale screen — cash), then credit (40), Stock (41), History (42), reversal (43–44), and the backend half: the Postgres tables (45), the endpoints (46) and the four end-to-end workflows (47). The BakiEntry table arrives with Step 40, since a credit sale has to store the entry it creates.
 
 ## Update This File
 Move "Current Step" forward as each step is checked off. Update the M-number at the top once a milestone finishes. This file always answers "what step am I on, right now" — the how lives in `docs/PHASE_GUIDE.md`.

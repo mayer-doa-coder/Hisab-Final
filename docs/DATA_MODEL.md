@@ -48,9 +48,14 @@ The minimum set of tables Hisab needs. Full detail: `PRD.md`, section 24.
 ## Sale
 - id
 - shop_id
+- total (money)
+- payment (cash or credit)
+- customer_id (set for a credit sale, null for cash)
+- reverses_sale_id (nullable; the sale this one undoes — see `../DECISIONS.md` D033)
 - occurred_at
 - server_received_at
-- total (money)
+
+`payment`, `customer_id` and `reverses_sale_id` were added after the first draft of this file. PRD section 8 requires choosing cash or baki and associating a customer with a credit sale, and a reversal cannot know whether to clear baki without knowing which it was. Undoing a sale writes a second Sale with a negative total rather than editing the first, so a day's takings already exclude anything reversed — `reverses_sale_id` is what links the two. Full reasoning: `../DECISIONS.md` D033.
 
 ## SaleItem
 - sale_id
@@ -68,6 +73,8 @@ The minimum set of tables Hisab needs. Full detail: `PRD.md`, section 24.
 - server_received_at
 
 Current stock for a product = sum of all its StockMovement.quantity_delta values. This is never stored as a Product field — see the Rule below and `../DECISIONS.md` D020.
+
+A sale is never refused because this sum is too low, so it can go negative — that is a visible signal the ledger is missing a restock, not an error state (`../DECISIONS.md` D031).
 
 ## BakiEntry
 - id
