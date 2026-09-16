@@ -118,3 +118,65 @@ val MIGRATION_2_3 =
             )
         }
     }
+
+/**
+ * Adds the `customer` and `baki_entry` tables (Step 40).
+ *
+ * Both belong to M3 by the build plan, where the customer and baki *screens*
+ * live. They arrive here because Step 40's check is that a credit sale
+ * "saves the sale, reduces stock, and creates a baki entry" — an entry that
+ * is not stored has not been created, and it cannot say who owes the money
+ * without a customer to point at. Only the tables and a name lookup exist
+ * now; the ledger functions and every customer screen are still M3.
+ *
+ * `customer` is a mutable entity, so it carries revision/updatedAt/deletedAt
+ * like Product (D017). `baki_entry` is a ledger and carries none of them.
+ *
+ * The statements must match what Room generates for the entities exactly —
+ * `SaleStockMigrationTest` fails if they drift apart.
+ */
+val MIGRATION_3_4 =
+    object : Migration(3, 4) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `customer` (
+                    `id` TEXT NOT NULL,
+                    `shopId` TEXT NOT NULL,
+                    `name` TEXT NOT NULL,
+                    `phone` TEXT,
+                    `revision` INTEGER NOT NULL,
+                    `updatedAt` INTEGER NOT NULL,
+                    `deletedAt` INTEGER,
+                    PRIMARY KEY(`id`)
+                )
+                """.trimIndent(),
+            )
+            db.execSQL(
+                "CREATE INDEX IF NOT EXISTS `index_customer_shopId_name` ON `customer` (`shopId`, `name`)",
+            )
+
+            db.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `baki_entry` (
+                    `id` TEXT NOT NULL,
+                    `customerId` TEXT NOT NULL,
+                    `amountDeltaPoisha` INTEGER NOT NULL,
+                    `entryType` TEXT NOT NULL,
+                    `reference` TEXT,
+                    `dueDateEpochDay` INTEGER,
+                    `occurredAt` INTEGER NOT NULL,
+                    `serverReceivedAt` INTEGER,
+                    PRIMARY KEY(`id`)
+                )
+                """.trimIndent(),
+            )
+            db.execSQL(
+                "CREATE INDEX IF NOT EXISTS `index_baki_entry_customerId_occurredAt` " +
+                    "ON `baki_entry` (`customerId`, `occurredAt`)",
+            )
+            db.execSQL(
+                "CREATE INDEX IF NOT EXISTS `index_baki_entry_reference` ON `baki_entry` (`reference`)",
+            )
+        }
+    }

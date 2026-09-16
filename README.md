@@ -121,7 +121,23 @@ cd android
 5. Run `./gradlew connectedDebugAndroidTest` for the on-phone tests. This removes the app when it finishes, so run `./gradlew installDebug` again afterwards.
 
 ### 5. CI
-Every push to `main` runs the same checks in GitHub Actions (`.github/workflows/ci.yml`): the localization check; Android build, unit tests, and lint; and server build, tests, lint, and format. The on-phone tests are not in CI, because there is no phone there — run them yourself before calling an Android step done.
+Every push to `main` runs the same checks in GitHub Actions (`.github/workflows/ci.yml`): the localization check; Android build, the Room schema check, unit tests (with their count printed), and lint; and server build, migrations, tests, lint, and format. The on-phone tests are not in CI, because there is no phone there — run them yourself before calling an Android step done.
+
+To see what the app on a connected phone has actually stored — sales, stock movements, baki entries, what is waiting to sync — without Android Studio:
+
+```bash
+bash scripts/phone-db.sh
+```
+
+It closes the app on the phone first so the copy it reads is consistent; reopen the app afterwards.
+
+To run every one of those checks locally before pushing, in the same order CI does, with one summary at the end:
+
+```bash
+bash scripts/ci-local.sh
+```
+
+It needs JDK 17+ as `JAVA_HOME`, Node 22+, and the local Postgres from step 2. A check you ran by hand on part of the code is not the same answer: run the whole script. The only CI step it cannot reproduce is GitHub's own Android SDK setup, which can break upstream without any change here.
 
 ## Where To Start
 1. Read `docs/PRD.md` for what Hisab must do.

@@ -1,0 +1,39 @@
+package com.hisab.app.data.baki
+
+import androidx.room.Dao
+import androidx.room.Insert
+import androidx.room.Query
+
+/**
+ * Writing and reading baki entries. There is no update and no delete: a
+ * confirmed entry is never rewritten, only answered with an opposite one.
+ *
+ * Only what a credit sale needs is here. The rest of the ledger — payments,
+ * overdue, the balance screen — is M3 (Steps 48–55).
+ */
+@Dao
+interface BakiEntryDao {
+    @Insert
+    suspend fun insert(entry: BakiEntryEntity)
+
+    @Query("SELECT * FROM baki_entry WHERE id = :id")
+    suspend fun byId(id: String): BakiEntryEntity?
+
+    @Query("SELECT * FROM baki_entry WHERE customerId = :customerId ORDER BY occurredAt ASC, id ASC")
+    suspend fun forCustomer(customerId: String): List<BakiEntryEntity>
+
+    /** Everything caused by one sale, so a reversal can be found from the sale it undoes. */
+    @Query("SELECT * FROM baki_entry WHERE reference = :reference ORDER BY occurredAt ASC, id ASC")
+    suspend fun forReference(reference: String): List<BakiEntryEntity>
+
+    /**
+     * What a customer owes, as the sum of their entries — D001 written in SQL.
+     * `COALESCE` makes a customer with no entries read as owing nothing.
+     */
+    @Query("SELECT COALESCE(SUM(amountDeltaPoisha), 0) FROM baki_entry WHERE customerId = :customerId")
+    suspend fun balancePoisha(customerId: String): Long
+
+    /** Really removes a row. Only for rows a test created. */
+    @Query("DELETE FROM baki_entry WHERE id = :id")
+    suspend fun hardDelete(id: String)
+}

@@ -356,3 +356,38 @@ Decision: the numbers that Android and the backend must agree on live in one pla
 Rejected: writing the same cases twice, once in each language. Rejected: JSON, which would need a parser dependency on the Kotlin side (`CLAUDE.md`: add a library only if clearly necessary) — a tab-separated line splits in three lines of code in both languages.
 
 Reason: `docs/PHASE_GUIDE.md` Step 37 asks for the same fixture to pass on both implementations. Two hand-kept copies satisfy that on the day they are written and quietly stop meaning anything the first time one is edited. Reading the real file means a case added to the fixture runs on both sides immediately, and neither side can pass by keeping its own numbers. Proved by changing a number in the file and watching both suites fail on it.
+
+---
+
+## D035 — Customer and BakiEntry Tables Arrive With the Credit Sale, Not With Their Screens
+Decision: the `customer` and `baki_entry` tables, and a `findOrCreate(name)` lookup, are built in M2 alongside the credit-sale screen (Step 40), rather than in M3 where the customer and baki *screens* live (Steps 50–51). Nothing else of M3 comes forward: there is no customer list, no customer details screen, no editing, and none of the baki ledger functions (`addCredit`, `receivePayment`, `calculateBalance`, `isOverdue`).
+
+Reason: Step 40's check is that a credit sale "saves the sale, reduces stock, and creates a baki entry". An entry that is not stored has not been created, and an entry cannot say who owes the money without a customer to point at. Building the sale first and the entry a milestone later would also mean either backfilling entries for sales already recorded, or accepting that early credit sales have no baki — both worse than moving one table forward.
+
+Known limit, recorded rather than hidden: a credit sale identifies the customer by name, matched case-insensitively, so two real customers who share a name become one record until M3 adds phone numbers and a customer picker. That is the deliberate choice between two imperfect options — one merged record that a shopkeeper can see and correct, or one person's baki silently split across three rows, which is the failure that actually loses money.
+
+---
+
+## D036 — Sale and Stock Changes Are Not Queued for Sync Until the Server Can Accept Them
+Decision: writing a sale, its lines, its stock movements and its baki entry does **not** write a SyncOutbox event yet. The queueing goes in at Steps 46–47, in `SaleRepository.record`, together with the backend endpoints that can accept those events.
+
+Rejected: queueing now "so it is not retrofitted later" (the instinct D016 is built on).
+
+Reason: D016 is about not building a *throwaway* sync mechanism and replacing it — and nothing here is throwaway; the outbox, the envelope, the push endpoint and the idempotency log all already exist and Product already flows through them. This is only about when Sale starts using them. The server has no sale endpoints until Step 46, so a pushed sale event comes back rejected as `UNSUPPORTED_ENTITY`, and `SyncEngine` marks a rejected event `REJECTED` and never retries it. Queueing now would therefore turn every sale into a permanently stuck outbox row and make the "changes waiting to send" count on the Sync screen wrong — telling a shopkeeper that work is pending when nothing will ever send it.
+
+The cost of waiting is one method body, in one place, already marked with a comment naming the step. The cost of not waiting is a misleading sync status and a table full of rubbish to clean up.
+
+---
+
+## D037 — How the New Sale Screen Is Laid Out
+Decision: New Sale is one screen. The product list is its body rather than sitting behind a "choose a product" button; tapping a product adds one of it, and tapping the same product again adds one more instead of making a second line. The total, the cash/baki choice and the confirm button are pinned to the bottom, and the cart is reached by tapping the summary bar. Quantity is changed either with 48 dp −/+ buttons or by typing into the field between them.
+
+Reason, from how the screen is actually used and from published cart/POS guidance:
+- **One tap per item.** A shopkeeper adds items while a customer waits, so the common path cannot start with a tap that only opens a picker.
+- **The total never scrolls away.** A sticky footer carrying the running total and the primary action is the standard cart pattern, and it puts both in the thumb's reach on a tall phone — the bottom of the screen is where one-handed reach is best.
+- **Both ways to set a quantity.** Large +/− targets are faster and more accurate than a small numeric field for one or two of something, and touch accuracy rises with target size. But twelve taps for twelve pieces is absurd and half a kilo cannot be tapped at all, so the number stays typeable. The stepper is worth one tap of a *whole* unit for pieces and half a unit for kg and litre, which is how those are actually sold.
+- **Confirmation is state, not a timer.** After a sale the screen stays put, the cart empties and a confirmation shows until the next item is added. Navigating away would cost two taps per customer, and a message that fades on a timer would disappear across the language switch that recreates the Activity (D014).
+
+The look is unchanged: every element is an existing `ClayCard`, `ClayButton`, `ClayChip` or `ClayTextField` (D029).
+
+Sources: [Justinmind — shopping cart UI best practices](https://www.justinmind.com/ui-design/shopping-cart); [UXPin — mobile navigation and the thumb zone](https://www.uxpin.com/studio/blog/mobile-navigation-examples/); [Scott & Conzola, *Designing Touch Screen Numeric Keypads: Effects of Finger Size, Key Size, and Key Spacing*](https://journals.sagepub.com/doi/10.1177/107118139704100180).

@@ -63,6 +63,14 @@ jobs:
       - name: Compile
         run: ./gradlew assembleDebug compileDebugAndroidTestKotlin
 
+      # On-phone test methods that return a value are refused by JUnit at run
+      # time, which CI never reaches (no phone). Checked here from the compiled
+      # classes instead. SaleFlowTest lost all ten of its tests on a device this
+      # way at Step 40, after compiling and passing every other check.
+      - name: JUnit method signatures
+        working-directory: .
+        run: bash scripts/check-junit-methods.sh android/app/build/intermediates/built_in_kotlinc/debugAndroidTest/compileDebugAndroidTestKotlin/classes
+
       # Step 31: run after the build, which re-exports the Room schema, so a
       # schema changed without a matching migration fails here.
       - name: Room schema and migrations
@@ -72,6 +80,15 @@ jobs:
       # "Android unit tests" — Step 4
       - name: Unit tests
         run: ./gradlew testDebugUnitTest
+
+      # Gradle says "BUILD SUCCESSFUL" whether it ran 125 tests or none, so
+      # this prints the real count from the JUnit XML and fails on zero. The
+      # server job already shows its count; without this the Android job never
+      # did — the same blind spot that once let CI stay green while running 21
+      # of 64 server tests (Step 22).
+      - name: Unit test count
+        working-directory: .
+        run: bash scripts/report-unit-tests.sh android/app/build/test-results/testDebugUnitTest
 
       # "Lint" — Step 4 (AGP's built-in lint + Spotless code style)
       - name: Lint

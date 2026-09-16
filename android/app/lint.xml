@@ -7,4 +7,12 @@
     <issue id="ObsoleteSdkInt">
         <ignore path="src/main/res/mipmap-anydpi-v26" />
     </issue>
+
+    <!-- The dashes lint wants replaced are inside literal ISO dates shown as
+         examples ("2026-10-15"). An en dash there would be a different string
+         and would stop the example matching what the field accepts. -->
+    <issue id="TypographyDashes">
+        <ignore path="src/main/res/values/strings.xml" />
+        <ignore path="src/main/res/values-en/strings.xml" />
+    </issue>
 </lint>

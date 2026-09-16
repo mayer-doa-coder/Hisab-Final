@@ -5,7 +5,6 @@
     <string name="app_name">Hisab</string>
     <string name="welcome_title">Welcome to Hisab</string>
     <string name="welcome_subtitle">A simple way to keep your shop\'s accounts.</string>
-    <string name="setup_note">This is the starting screen. Work is still in progress.</string>
     <string name="action_change_language">Change language</string>
 
     <!-- Product (M1) -->
@@ -69,4 +68,71 @@
     <string name="sync_failed">Sync failed: %1$s</string>
     <string name="sync_not_signed_in">Enter your email and password first</string>
     <string name="sync_pending_count">Waiting to send: %1$d</string>
+
+    <!-- New Sale (M2, Steps 39-40) -->
+    <string name="sale_new_title">New Sale</string>
+    <string name="sale_open">New Sale</string>
+    <string name="sale_pick_product">Choose a product</string>
+    <string name="sale_view_cart">See items added</string>
+    <string name="sale_no_products_title">Add a product first</string>
+    <string name="sale_no_products_subtitle">You need at least one product before you can sell.</string>
+    <string name="sale_total_label">Total</string>
+    <string name="sale_items_count">Items: %1$d</string>
+    <string name="sale_remove_line">Remove</string>
+    <string name="sale_pay_cash">Cash</string>
+    <string name="sale_pay_credit">Baki</string>
+    <string name="sale_customer_label">Who owes it</string>
+    <string name="sale_customer_hint">e.g. Rahim</string>
+    <string name="sale_due_date_label">Due date (optional)</string>
+    <string name="sale_due_date_hint">e.g. 2026-10-15</string>
+    <string name="sale_confirm_cash">Confirm cash sale</string>
+    <string name="sale_confirm_credit">Confirm sale on baki</string>
+    <string name="sale_saved_cash">Sale saved</string>
+    <string name="sale_saved_credit">Sale on baki saved</string>
+    <string name="sale_stock_warning_title">Selling more than the stock shows</string>
+    <string name="sale_stock_warning">%1$s in stock, selling %2$s</string>
+    <string name="sale_stock_left">Stock: %1$s</string>
+    <string name="error_customer_required">Say who owes it</string>
+    <string name="error_due_date_invalid">Write the date like this: 2026-10-15</string>
+    <string name="error_quantity_invalid">Enter a valid quantity</string>
+
+    <!-- Stock (M2, Step 41) -->
+    <string name="stock_title">Stock</string>
+    <string name="stock_open">View stock</string>
+    <string name="stock_search_hint">Find a product</string>
+    <string name="stock_empty_title">No products yet</string>
+    <string name="stock_empty_subtitle">Add a product and its stock will show here.</string>
+    <string name="stock_search_empty">No product found with that name.</string>
+    <string name="stock_add_title">Add stock</string>
+    <string name="stock_add_action">Add stock</string>
+    <string name="stock_add_quantity_label">How much arrived</string>
+    <string name="stock_add_note_label">Supplier / receipt (optional)</string>
+    <string name="stock_add_note_hint">e.g. Karim Store</string>
+    <string name="stock_current_label">In stock now</string>
+    <string name="stock_after_label">After adding</string>
+    <string name="stock_negative_note">Stock is negative — an earlier delivery was probably never recorded.</string>
+    <string name="stock_added">Stock added</string>
+
+    <!-- Transaction history (M2, Step 42) -->
+    <string name="history_title">Transactions</string>
+    <string name="history_open">View transactions</string>
+    <string name="history_empty_title">No transactions yet</string>
+    <string name="history_empty_subtitle">Sales and stock changes will show here.</string>
+    <string name="history_filter_all">All</string>
+    <string name="history_filter_sales">Sales</string>
+    <string name="history_filter_stock">Stock</string>
+    <string name="history_sale_cash">Cash sale</string>
+    <string name="history_sale_credit">Sale on baki</string>
+    <string name="history_sale_reversal">Sale reversed</string>
+    <string name="history_movement_restock">Stock added</string>
+    <string name="history_movement_return">Return</string>
+    <string name="history_movement_damage">Damaged</string>
+    <string name="history_movement_correction">Count corrected</string>
+    <string name="history_unknown_product">Product no longer exists</string>
+    <string name="history_today">Today</string>
+    <string name="history_yesterday">Yesterday</string>
+
+    <string name="action_add">Add</string>
+    <string name="cd_increase">Increase</string>
+    <string name="cd_decrease">Decrease</string>
 </resources>

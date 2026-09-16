@@ -13,11 +13,13 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * Adding the sale, sale_item and stock_movement tables (Step 38) must not
- * cost a shop the products already on the phone, some of which may not be
- * synced yet. This opens a real version-2 database with rows in it, runs the
- * migration, and lets Room check the result against the exported version-3
- * schema — which is what catches hand-written SQL drifting from the entities.
+ * Every migration M2 adds, checked the only way that means anything: open a
+ * real database of the older version with rows in it, run the migration, and
+ * let Room check the result against the exported schema — which is what
+ * catches hand-written SQL drifting from the entities.
+ *
+ * A shop's local database holds data that may not be synced yet, so losing it
+ * to a migration is losing it for good (PRD section 22).
  */
 @RunWith(AndroidJUnit4::class)
 class SaleStockMigrationTest {
@@ -74,15 +76,60 @@ class SaleStockMigrationTest {
         }
     }
 
+    /**
+     * Adding customer and baki_entry (Step 40) must not cost a shop the sales
+     * already recorded on the phone, which may not be synced yet.
+     */
+    @Test
+    fun addingTheCustomerAndBakiTablesKeepsExistingSales() {
+        helper.createDatabase(TEST_DB, 3).use { version3 ->
+            version3.execSQL(
+                """
+                INSERT INTO sale
+                    (id, shopId, totalPoisha, payment, customerId, reversesSaleId, occurredAt, serverReceivedAt)
+                VALUES ('sale-1', 'shop-1', 20000, 'CASH', NULL, NULL, 1757800000000, NULL)
+                """.trimIndent(),
+            )
+            version3.execSQL(
+                """
+                INSERT INTO stock_movement
+                    (id, productId, movementType, quantityDeltaScaled, sourceReference, occurredAt, serverReceivedAt)
+                VALUES ('move-1', 'product-1', 'RESTOCK', 10000, NULL, 1757800000000, NULL)
+                """.trimIndent(),
+            )
+        }
+
+        val migrated = helper.runMigrationsAndValidate(TEST_DB, 4, true, MIGRATION_3_4)
+
+        migrated.query("SELECT totalPoisha FROM sale").use { cursor ->
+            assertTrue("the sale should survive the upgrade", cursor.moveToFirst())
+            assertEquals(20_000, cursor.getInt(0))
+        }
+        migrated.query("SELECT quantityDeltaScaled FROM stock_movement").use { cursor ->
+            assertTrue("the movement should survive the upgrade", cursor.moveToFirst())
+            assertEquals(10_000, cursor.getInt(0))
+        }
+
+        for (table in listOf("customer", "baki_entry")) {
+            migrated.query("SELECT COUNT(*) FROM $table").use { cursor ->
+                assertTrue(cursor.moveToFirst())
+                assertEquals("$table should exist and start empty", 0, cursor.getInt(0))
+            }
+        }
+    }
+
     /** A phone that has never been upgraded, only ever installed fresh, takes the same path. */
     @Test
-    fun aDatabaseCreatedAtVersionOneReachesVersionThree() {
+    fun aDatabaseCreatedAtVersionOneReachesTheNewestVersion() {
         helper.createDatabase(TEST_DB, 1).close()
-        val migrated = helper.runMigrationsAndValidate(TEST_DB, 3, true, MIGRATION_1_2, MIGRATION_2_3)
+        val migrated =
+            helper.runMigrationsAndValidate(TEST_DB, 4, true, MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
 
-        migrated.query("SELECT COUNT(*) FROM stock_movement").use { cursor ->
-            assertTrue(cursor.moveToFirst())
-            assertEquals(0, cursor.getInt(0))
+        for (table in listOf("product", "sale", "sale_item", "stock_movement", "customer", "baki_entry")) {
+            migrated.query("SELECT COUNT(*) FROM $table").use { cursor ->
+                assertTrue(cursor.moveToFirst())
+                assertEquals("$table should exist and start empty", 0, cursor.getInt(0))
+            }
         }
     }
 

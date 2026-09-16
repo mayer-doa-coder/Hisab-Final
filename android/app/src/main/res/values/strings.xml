@@ -5,7 +5,6 @@
     <string name="app_name">হিসাব</string>
     <string name="welcome_title">হিসাবে স্বাগতম</string>
     <string name="welcome_subtitle">আপনার দোকানের হিসাব রাখার সহজ অ্যাপ।</string>
-    <string name="setup_note">এটি শুরুর স্ক্রিন। কাজ এখনো চলছে।</string>
     <string name="action_change_language">ভাষা পরিবর্তন করুন</string>
 
     <!-- Language names always appear in their own script, in every locale. -->
@@ -76,4 +75,71 @@
     <string name="sync_failed">সিঙ্ক হয়নি: %1$s</string>
     <string name="sync_not_signed_in">আগে ইমেইল ও পাসওয়ার্ড দিন</string>
     <string name="sync_pending_count">পাঠানো বাকি: %1$d</string>
+
+    <!-- New Sale (M2, Steps 39-40) -->
+    <string name="sale_new_title">নতুন বিক্রি</string>
+    <string name="sale_open">নতুন বিক্রি</string>
+    <string name="sale_pick_product">পণ্য বাছুন</string>
+    <string name="sale_view_cart">যোগ করা পণ্য দেখুন</string>
+    <string name="sale_no_products_title">আগে পণ্য যোগ করুন</string>
+    <string name="sale_no_products_subtitle">বিক্রি করার আগে অন্তত একটি পণ্য থাকতে হবে।</string>
+    <string name="sale_total_label">মোট</string>
+    <string name="sale_items_count">পণ্য: %1$d</string>
+    <string name="sale_remove_line">সরান</string>
+    <string name="sale_pay_cash">নগদ</string>
+    <string name="sale_pay_credit">বাকি</string>
+    <string name="sale_customer_label">কার বাকি</string>
+    <string name="sale_customer_hint">যেমন: রহিম</string>
+    <string name="sale_due_date_label">ফেরত দেওয়ার তারিখ (ঐচ্ছিক)</string>
+    <string name="sale_due_date_hint">যেমন: 2026-10-15</string>
+    <string name="sale_confirm_cash">নগদ বিক্রি নিশ্চিত করুন</string>
+    <string name="sale_confirm_credit">বাকিতে বিক্রি নিশ্চিত করুন</string>
+    <string name="sale_saved_cash">বিক্রি সংরক্ষিত হয়েছে</string>
+    <string name="sale_saved_credit">বাকিতে বিক্রি সংরক্ষিত হয়েছে</string>
+    <string name="sale_stock_warning_title">স্টকের চেয়ে বেশি বিক্রি হচ্ছে</string>
+    <string name="sale_stock_warning">স্টকে আছে %1$s, বিক্রি হচ্ছে %2$s</string>
+    <string name="sale_stock_left">স্টক: %1$s</string>
+    <string name="error_customer_required">কার বাকি তা লিখুন</string>
+    <string name="error_due_date_invalid">তারিখ এভাবে লিখুন: 2026-10-15</string>
+    <string name="error_quantity_invalid">সঠিক পরিমাণ লিখুন</string>
+
+    <!-- Stock (M2, Step 41) -->
+    <string name="stock_title">স্টক</string>
+    <string name="stock_open">স্টক দেখুন</string>
+    <string name="stock_search_hint">পণ্য খুঁজুন</string>
+    <string name="stock_empty_title">এখনো কোনো পণ্য নেই</string>
+    <string name="stock_empty_subtitle">পণ্য যোগ করলে এখানে স্টক দেখা যাবে।</string>
+    <string name="stock_search_empty">এই নামে কোনো পণ্য পাওয়া যায়নি।</string>
+    <string name="stock_add_title">স্টক যোগ করুন</string>
+    <string name="stock_add_action">স্টক যোগ</string>
+    <string name="stock_add_quantity_label">কত এলো</string>
+    <string name="stock_add_note_label">সরবরাহকারী / রসিদ (ঐচ্ছিক)</string>
+    <string name="stock_add_note_hint">যেমন: করিম স্টোর</string>
+    <string name="stock_current_label">এখন আছে</string>
+    <string name="stock_after_label">যোগ করার পর</string>
+    <string name="stock_negative_note">স্টক ঋণাত্মক — সম্ভবত আগের কেনা লেখা হয়নি।</string>
+    <string name="stock_added">স্টক যোগ হয়েছে</string>
+
+    <!-- Transaction history (M2, Step 42) -->
+    <string name="history_title">লেনদেন</string>
+    <string name="history_open">লেনদেন দেখুন</string>
+    <string name="history_empty_title">এখনো কোনো লেনদেন নেই</string>
+    <string name="history_empty_subtitle">বিক্রি বা স্টক যোগ করলে এখানে দেখা যাবে।</string>
+    <string name="history_filter_all">সব</string>
+    <string name="history_filter_sales">বিক্রি</string>
+    <string name="history_filter_stock">স্টক</string>
+    <string name="history_sale_cash">নগদ বিক্রি</string>
+    <string name="history_sale_credit">বাকিতে বিক্রি</string>
+    <string name="history_sale_reversal">বিক্রি বাতিল</string>
+    <string name="history_movement_restock">স্টক যোগ</string>
+    <string name="history_movement_return">ফেরত</string>
+    <string name="history_movement_damage">নষ্ট</string>
+    <string name="history_movement_correction">গণনা সংশোধন</string>
+    <string name="history_unknown_product">পণ্যটি আর নেই</string>
+    <string name="history_today">আজ</string>
+    <string name="history_yesterday">গতকাল</string>
+
+    <string name="action_add">যোগ করুন</string>
+    <string name="cd_increase">বাড়ান</string>
+    <string name="cd_decrease">কমান</string>
 </resources>

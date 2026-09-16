@@ -1,6 +1,7 @@
 package com.hisab.app.data.sale
 
 import androidx.room.Dao
+import androidx.room.Embedded
 import androidx.room.Insert
 import androidx.room.Query
 import kotlinx.coroutines.flow.Flow
@@ -64,6 +65,27 @@ interface SaleDao {
     ): Long
 
     /**
+     * What the history screen shows (Step 42), newest first, with the number
+     * of lines counted in the same query.
+     *
+     * Counting per sale in Kotlin instead would mean one extra query per row
+     * — 100 round trips to fill one screen on a cheap phone (D028).
+     */
+    @Query(
+        """
+        SELECT s.*, (SELECT COUNT(*) FROM sale_item i WHERE i.saleId = s.id) AS lineCount
+        FROM sale s
+        WHERE s.shopId = :shopId
+        ORDER BY s.occurredAt DESC, s.id DESC
+        LIMIT :limit
+        """,
+    )
+    fun observeRecentSummaries(
+        shopId: String,
+        limit: Int = 100,
+    ): Flow<List<SaleSummary>>
+
+    /**
      * Really removes a sale and (through the foreign key) its lines. Only for
      * rows that must leave the device for good — a row a test created. A
      * shopkeeper's reversal never comes through here.
@@ -71,3 +93,9 @@ interface SaleDao {
     @Query("DELETE FROM sale WHERE id = :id")
     suspend fun hardDelete(id: String)
 }
+
+/** A sale and how many lines it had, for a history row that does not open it. */
+data class SaleSummary(
+    @Embedded val sale: SaleEntity,
+    val lineCount: Int,
+)

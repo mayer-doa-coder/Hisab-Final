@@ -2,7 +2,7 @@
 
 M2 — Sale and Stock (Steps 35–47)
 
-Steps 35–38 are built. M0 (Steps 1–22) is finished and verified locally; its one remaining check needs a push: CI green on GitHub. M1 (Steps 23–34) is built, with two checks still owed — listed under "Owed from M1" below.
+Steps 35–42 are built. M0 (Steps 1–22) is finished and verified locally; its one remaining check needs a push: CI green on GitHub. M1 (Steps 23–34) is built, with two checks still owed — listed under "Owed from M1" below.
 
 `docs/PHASE_GUIDE.md` has the exact steps, in order, each with its own check. This file just tracks which step you're on — the step list itself lives in one place only, so don't copy it here.
 
@@ -10,11 +10,17 @@ Steps 35–38 are built. M0 (Steps 1–22) is finished and verified locally; its
 Build Sale and Stock end to end — the rules first, then the local tables, then the screens and the backend — as ledgers that are only ever added to, never edited.
 
 ## Current Step
-Steps 35–38 are built and checked. Step 39 (New Sale screen — cash) is next.
+Steps 35–42 are built. Step 43 (transaction reversal and correction) is next.
 
-One check is owed on Step 38: `connectedDebugAndroidTest` with the phone attached, for `SaleStockDaoTest` (14 tests) and `SaleStockMigrationTest` (2). They compile, and the domain rules underneath them pass on the JVM, but the insert/read check Step 38 asks for is a real run on hardware.
+**Device suite: 102 tests, 0 failures, 0 errors, 0 skipped** on the Galaxy A15 (2026-09-17), including the checks Steps 39–42 name (`SaleFlowTest`, `StockFlowTest`, `HistoryOrderTest`) and every migration from version 1 to 4 run against real rows (`ProductMigrationTest`, `SaleStockMigrationTest`). The first run reported 93: `SaleFlowTest`'s setup returned a value, so JUnit skipped the whole class. Fixed, and now caught in CI by `scripts/check-junit-methods.sh`.
 
-One repository chore before the next push: `android/app/schemas/com.hisab.app.data.HisabDatabase/3.json` is new and untracked, so `scripts/check-room-schema.sh` fails until it is committed. That is the check doing its job, not a defect.
+**Screens checked by hand** on the phone, in airplane mode, through the whole walkthrough (stock, cash sale, cart and quantities, baki sale with the stock warning, history, language switch). Two New Sale bugs found while writing the walkthrough were fixed first (the cart summary's corner said "Total" instead of saying it opens the cart; a sale confirmed with the cart open left the next sale stuck on the cart).
+
+**Still owed:** the stored rows behind that walkthrough were not looked at — the phone had no Android Studio, and the device test run then uninstalled the app. `bash scripts/phone-db.sh` now shows them without Android Studio: re-enter a cash sale and a baki sale, run it, and compare against the walkthrough's numbers. Also still to answer: whether the due-date keypad on the phone has a "-" key.
+
+One repository chore before the next push: `android/app/schemas/com.hisab.app.data.HisabDatabase/4.json` is new and untracked, so `scripts/check-room-schema.sh` fails until it is committed. That is the check doing its job, not a defect.
+
+**Before any push:** `bash scripts/ci-local.sh` runs every CI check in CI's order. Last run on this tree (2026-09-17): everything passes — 125 Android unit tests, 142 server tests, lint and format clean — except the Room schema step, and only because `4.json` is not committed yet.
 
 ### Owed from M1
 1. **Step 28** — add, edit and search on the phone with airplane mode on. Nothing in the local path touches the network, but the check is a real run, not an argument.
@@ -34,7 +40,14 @@ Two CI failures were fixed on the way here, neither caused by this work:
 - Step 36 — the sale functions (`domain/Sale.kt`, `server/src/domain/sale.ts`): `calculateLineTotal`, `calculateSaleTotal`, `completeCashSale`, `completeCreditSale`, `reverseSale`. A line total rounds half away from zero, per line, so a reversal gives back exactly what it charged and the printed lines add up to the printed total (D032). A completed sale is one value holding the sale, its lines, its stock movements and (on credit) its baki entry, and that value refuses to exist if any of them is missing or disagrees — D021 enforced by shape rather than by remembering. A reversal is a second, opposite sale, never an edit (D033).
 - Step 37 — one fixture file, `fixtures/m2_sale_stock.tsv`, read at run time by both suites (D034). 29 cases covering line totals, sale totals, stock balances, corrections, credit sales and reversals. **Proved by breaking it**: a number was changed in the file and both the Kotlin and the TypeScript suite failed on that case, then passed again when it was restored.
 - Step 38 — `sale`, `sale_item` and `stock_movement` tables in Room (database version 3, hand-written `MIGRATION_2_3`, no destructive fallback), with schema 3 exported. `sale_item` has a foreign key to `sale`, so a line cannot exist without its sale. Current stock is a `SUM` query with `COALESCE`, so a product that never moved reads as zero — D020 written in SQL. There is no update and no delete on either DAO: confirmed history is never rewritten.
-- Test counts after this work: **100 Android unit tests** and **142 server tests**, 0 failures on both (read from the result XML, not from "BUILD SUCCESSFUL"). Android lint reports no issues; Spotless and ESLint pass.
+- Step 39 — New Sale, cash. One screen: the product list is the body, so adding an item is one tap; the total, the cash/baki choice and the confirm button are pinned to the bottom in the thumb's reach; quantity is set with 48 dp −/+ buttons or by typing (D037). The running total is `calculateCartTotal`, which is the same expression `calculateSaleTotal` uses, so the number on screen cannot drift from the number saved — there is a test that says so.
+- Step 40 — New Sale, baki. The same screen with the payment chip switched: it asks who owes it and an optional due date, then writes the sale, its stock movements and the baki entry in one database transaction (D021). This needed the `customer` and `baki_entry` tables, which the build plan puts in M3 — see D035 for why they came forward and what is deliberately still missing (every customer and baki screen, and the whole baki ledger API).
+- Step 41 — Stock. Every product with the stock its movements add up to, in one query rather than one per product. Restocking happens in place, showing what is there now and what it will become before anything is written. Negative stock is shown as negative, in red, with a line saying what it usually means — not hidden and not clamped to zero (D031).
+- Step 42 — Transaction history. Sales and stock movements on one list, newest first, told apart by a coloured label and by which way the number points. A sale's own stock movement is left out, because the sale is already in the list. Every row shows when it actually happened, never when the server saw it (D019). Nothing on the screen edits anything.
+- Home was rearranged by how often each thing is done: New Sale is one large button at the top, Stock and History are tiles beside each other, Products and Sync are quieter and below.
+- Sale and stock changes are **not** queued for sync yet, on purpose — the server has no endpoints for them until Step 46, and a queued event it refuses would stick in the outbox forever and make the "waiting to send" count wrong (D036).
+- Test counts after this work: **125 Android unit tests** and **142 server tests**, 0 failures on both (read from the result XML, not from "BUILD SUCCESSFUL"). Android lint reports no issues; Spotless and ESLint pass. 44 instrumented tests are written and compile, awaiting a device.
+- Known gap worth naming: `scripts/check-localization.sh` only reads `<string>`, so a `<plurals>` block would slip past the Bangla/English parity check. Nothing uses plurals yet — "Items: 3" is labelled rather than counted to avoid needing one — but the first real plural needs the script extended first.
 
 ## M1 — Product, done so far
 - Steps 23–24 — `product` table in Room (`data/product/`), reached only through `ProductRepository`, which owns the rules: device-made id (D018), revision starting at 1, a stale-revision write rejected instead of applied (D017), deletion as a tombstone, and aliases trimmed and de-duplicated. Database version 2 with a hand-written migration (no destructive fallback), matching the exported schema exactly.
@@ -115,10 +128,10 @@ Done so far:
   - **CI now builds the real APK** (`assembleDebug`) and compiles the on-phone tests, instead of only compiling Kotlin.
 
 ## Allowed Right Now
-Anything in M2 (Steps 35–47 of `docs/PHASE_GUIDE.md`) — the sale and stock rules, their Room tables, the New Sale/Stock/History screens, reversal, the Postgres tables and the sale and stock endpoints. Finishing the two M1 checks above also stays in scope.
+Anything in M2 (Steps 35–47 of `docs/PHASE_GUIDE.md`) — reversal and correction, the Postgres tables, and the sale and stock endpoints. Finishing the two M1 checks above also stays in scope.
 
 ## Not Allowed Right Now
-- Customer and Baki screens, and the baki functions (`addCredit`, `receivePayment`, `calculateBalance`, `isOverdue`) — M3, Steps 48–61. A credit sale must still create its BakiEntry correctly, which is why the entry's shape exists now and the ledger functions do not.
+- Customer and Baki screens, and the baki functions (`addCredit`, `receivePayment`, `calculateBalance`, `isOverdue`) — M3, Steps 48–61. The `customer` and `baki_entry` tables exist because a credit sale cannot create its entry without them (D035); nothing else of M3 does.
 - Ask Hisab, forecasting, suggestions — M5/M6.
 - Full security hardening (rate limiting, token rotation, threat testing) — still M7.
 
@@ -126,7 +139,7 @@ Anything in M2 (Steps 35–47 of `docs/PHASE_GUIDE.md`) — the sale and stock r
 Every check in Steps 35–47 passes — see `docs/PHASE_GUIDE.md` for each one individually.
 
 ## Next
-Step 39 (New Sale screen — cash), then credit (40), Stock (41), History (42), reversal (43–44), and the backend half: the Postgres tables (45), the endpoints (46) and the four end-to-end workflows (47). The BakiEntry table arrives with Step 40, since a credit sale has to store the entry it creates.
+Step 43 (reversal and correction), then the credit-sale reversal rule specifically (44), and the backend half: the Postgres tables (45), the endpoints (46) and the four end-to-end workflows (47). Sale and stock sync queueing goes in at 46–47, in `SaleRepository.record` and `StockRepository.restock` (D036).
 
 ## Update This File
 Move "Current Step" forward as each step is checked off. Update the M-number at the top once a milestone finishes. This file always answers "what step am I on, right now" — the how lives in `docs/PHASE_GUIDE.md`.

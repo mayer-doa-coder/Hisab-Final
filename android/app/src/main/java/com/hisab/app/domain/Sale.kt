@@ -150,6 +150,19 @@ fun calculateLineTotal(
 fun calculateSaleTotal(items: List<SaleItem>): Money = items.map { calculateLineTotal(it.quantity, it.unitPrice) }.sum()
 
 /**
+ * What a cart costs before it is confirmed and has a sale id.
+ *
+ * Deliberately the same expression as [calculateSaleTotal], not a second
+ * rule: the number on the New Sale screen and the number written to the sale
+ * must be the same one, and a shopkeeper who sees a total change on confirm
+ * has no reason to trust either. `SaleTest` asserts the two agree.
+ *
+ * Kotlin only. The server has no cart, so `server/src/domain/sale.ts` has no
+ * twin for this — every rule it does share still lives in both.
+ */
+fun calculateCartTotal(lines: List<SaleLine>): Money = lines.map { calculateLineTotal(it.quantity, it.unitPrice) }.sum()
+
+/**
  * A cash sale: the sale, its lines, and one stock movement per line.
  *
  * Nothing is checked against current stock. The goods are being handed over;

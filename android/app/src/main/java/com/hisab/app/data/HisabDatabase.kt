@@ -5,6 +5,10 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
+import com.hisab.app.data.baki.BakiEntryDao
+import com.hisab.app.data.baki.BakiEntryEntity
+import com.hisab.app.data.customer.CustomerDao
+import com.hisab.app.data.customer.CustomerEntity
 import com.hisab.app.data.product.ProductDao
 import com.hisab.app.data.product.ProductEntity
 import com.hisab.app.data.sale.SaleDao
@@ -25,8 +29,10 @@ import com.hisab.app.data.sync.SyncOutboxEntity
         SaleEntity::class,
         SaleItemEntity::class,
         StockMovementEntity::class,
+        CustomerEntity::class,
+        BakiEntryEntity::class,
     ],
-    version = 3,
+    version = 4,
     exportSchema = true,
 )
 @TypeConverters(InstantConverters::class, AliasListConverters::class)
@@ -40,6 +46,10 @@ abstract class HisabDatabase : RoomDatabase() {
     abstract fun saleDao(): SaleDao
 
     abstract fun stockMovementDao(): StockMovementDao
+
+    abstract fun customerDao(): CustomerDao
+
+    abstract fun bakiEntryDao(): BakiEntryDao
 
     companion object {
         const val DATABASE_NAME = "hisab.db"
@@ -62,7 +72,7 @@ abstract class HisabDatabase : RoomDatabase() {
                         context.applicationContext,
                         HisabDatabase::class.java,
                         DATABASE_NAME,
-                    ).addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                    ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
                     .build()
                     .also { instance = it }
             }

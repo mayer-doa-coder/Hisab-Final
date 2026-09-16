@@ -1,8 +1,10 @@
 package com.hisab.app.data.stock
 
 import androidx.room.Dao
+import androidx.room.Embedded
 import androidx.room.Insert
 import androidx.room.Query
+import com.hisab.app.data.product.ProductEntity
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -42,23 +44,85 @@ interface StockMovementDao {
     @Query("SELECT COALESCE(SUM(quantityDeltaScaled), 0) FROM stock_movement WHERE productId = :productId")
     fun observeCurrentStockScaled(productId: String): Flow<Long>
 
-    /** Current stock for every product that has ever moved — what the Stock screen lists (Step 41). */
+    /**
+     * What the Stock screen shows (Step 41): every product this shop sells,
+     * each with its stock worked out from the ledger.
+     *
+     * One query rather than one per product. A shop with 200 products on a
+     * cheap phone (D028) would otherwise make 200 round trips to fill one
+     * screen. The subquery is what keeps stock derived (D020) — there is
+     * still no stored stock column to drift.
+     *
+     * Products are listed even when they have never moved: a new product
+     * reads as zero, which is the honest answer, not an absence.
+     */
     @Query(
         """
-        SELECT productId, SUM(quantityDeltaScaled) AS stockScaled
-        FROM stock_movement
-        GROUP BY productId
+        SELECT p.*,
+               COALESCE((
+                   SELECT SUM(m.quantityDeltaScaled)
+                   FROM stock_movement m
+                   WHERE m.productId = p.id
+               ), 0) AS stockScaled
+        FROM product p
+        WHERE p.shopId = :shopId
+          AND p.deletedAt IS NULL
+          AND (:includeInactive OR p.active = 1)
+          AND (
+            :query = ''
+            OR p.name LIKE '%' || :query || '%'
+            OR p.aliases LIKE '%' || :query || '%'
+          )
+        ORDER BY p.active DESC, p.name COLLATE NOCASE ASC
         """,
     )
-    fun observeCurrentStock(): Flow<List<ProductStock>>
+    fun observeProductsWithStock(
+        shopId: String,
+        query: String,
+        includeInactive: Boolean,
+    ): Flow<List<ProductWithStock>>
+
+    /**
+     * Stock movements for the history screen (Step 42), newest first, with
+     * the product's name already joined on so the screen does not have to
+     * look up 100 names one at a time.
+     *
+     * `excludeType` is passed in rather than written into the SQL so the
+     * caller names it with the enum. History uses it to leave out SALE
+     * movements: a sale is already shown as a sale, and showing its stock
+     * movement again would list the same event twice.
+     *
+     * The join is LEFT: a movement whose product was deleted still belongs in
+     * history, with no name, rather than vanishing from it.
+     */
+    @Query(
+        """
+        SELECT m.*, p.name AS productName
+        FROM stock_movement m
+        LEFT JOIN product p ON p.id = m.productId
+        WHERE m.movementType != :excludeType
+        ORDER BY m.occurredAt DESC, m.id DESC
+        LIMIT :limit
+        """,
+    )
+    fun observeRecentMovements(
+        excludeType: String,
+        limit: Int = 100,
+    ): Flow<List<MovementWithProduct>>
 
     /** Really removes a movement. Only for rows a test created, never for a shopkeeper's correction. */
     @Query("DELETE FROM stock_movement WHERE id = :id")
     suspend fun hardDelete(id: String)
 }
 
-/** One row of the "stock per product" query above. */
-data class ProductStock(
-    val productId: String,
+/** A product and the stock its movements add up to. */
+data class ProductWithStock(
+    @Embedded val product: ProductEntity,
     val stockScaled: Long,
+)
+
+/** A stock movement and the name of the product it moved, null if that product is gone. */
+data class MovementWithProduct(
+    @Embedded val movement: StockMovementEntity,
+    val productName: String?,
 )

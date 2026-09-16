@@ -21,9 +21,15 @@ import com.hisab.app.AppLanguage
 import com.hisab.app.R
 import com.hisab.app.data.product.ProductEntity
 import com.hisab.app.data.product.ProductWriteResult
+import com.hisab.app.ui.history.HistoryScreen
+import com.hisab.app.ui.history.HistoryViewModel
 import com.hisab.app.ui.product.ProductEditScreen
 import com.hisab.app.ui.product.ProductListScreen
 import com.hisab.app.ui.product.ProductViewModel
+import com.hisab.app.ui.sale.NewSaleScreen
+import com.hisab.app.ui.sale.SaleViewModel
+import com.hisab.app.ui.stock.StockScreen
+import com.hisab.app.ui.stock.StockViewModel
 import com.hisab.app.ui.sync.SyncScreen
 import com.hisab.app.ui.theme.ClayColors
 import com.hisab.app.ui.theme.ClayText
@@ -32,13 +38,17 @@ import com.hisab.app.ui.theme.HisabTheme
 private const val ROUTE_HOME = "home"
 private const val ROUTE_PRODUCTS = "products"
 private const val ROUTE_PRODUCT_FORM = "product_form"
+private const val ROUTE_SALE = "sale"
+private const val ROUTE_STOCK = "stock"
+private const val ROUTE_HISTORY = "history"
 private const val ROUTE_SYNC = "sync"
 
 /**
  * Which screen is showing. Kept as a saved string rather than a navigation
- * library: there are three screens, and adding a library for that would be
- * structure ahead of need (CLAUDE.md). The id of the product being edited is
- * saved too, so the form survives the Activity being recreated.
+ * library: the screens are a flat list reached from Home, and adding a
+ * library for that would be structure ahead of need (CLAUDE.md). The id of
+ * the product being edited is saved too, so the form survives the Activity
+ * being recreated — which happens on every language switch (D014).
  */
 @Composable
 fun HisabApp(
@@ -84,6 +94,21 @@ fun HisabApp(
                 )
             }
 
+            ROUTE_SALE -> {
+                BackHandler { route = ROUTE_HOME }
+                NewSaleRoute(onBack = { route = ROUTE_HOME })
+            }
+
+            ROUTE_STOCK -> {
+                BackHandler { route = ROUTE_HOME }
+                StockRoute(onBack = { route = ROUTE_HOME })
+            }
+
+            ROUTE_HISTORY -> {
+                BackHandler { route = ROUTE_HOME }
+                HistoryRoute(onBack = { route = ROUTE_HOME })
+            }
+
             ROUTE_SYNC -> {
                 BackHandler { route = ROUTE_HOME }
                 SyncScreen(viewModel = viewModel(), onBack = { route = ROUTE_HOME })
@@ -93,6 +118,9 @@ fun HisabApp(
                 HomeScreen(
                     language = language,
                     onChangeLanguage = onChangeLanguage,
+                    onOpenSale = { route = ROUTE_SALE },
+                    onOpenStock = { route = ROUTE_STOCK },
+                    onOpenHistory = { route = ROUTE_HISTORY },
                     onOpenProducts = { route = ROUTE_PRODUCTS },
                     onOpenSync = { route = ROUTE_SYNC },
                 )
@@ -151,6 +179,58 @@ private fun ProductFormRoute(
         },
         onBack = onDone,
     )
+}
+
+/**
+ * New Sale (Steps 39–40).
+ *
+ * Staying on this screen after a sale is written is deliberate: the next
+ * customer is already at the counter, and walking back through Home between
+ * every sale would cost two taps each time. The cart empties and a
+ * confirmation appears, so it is never unclear whether the last sale saved.
+ */
+@Composable
+private fun NewSaleRoute(onBack: () -> Unit) {
+    val viewModel: SaleViewModel = viewModel()
+    val state by viewModel.uiState.collectAsState()
+
+    NewSaleScreen(
+        state = state,
+        onQueryChange = viewModel::onQueryChange,
+        onAddOne = viewModel::addOne,
+        onRemoveOne = { line -> viewModel.removeOne(line.product.id, line.product.unit) },
+        onSetQuantity = { line, quantity -> viewModel.setQuantity(line.product.id, quantity) },
+        onRemoveLine = { line -> viewModel.removeLine(line.product.id) },
+        onPaymentChange = viewModel::onPaymentChange,
+        onCustomerNameChange = viewModel::onCustomerNameChange,
+        onDueDateChange = viewModel::onDueDateChange,
+        onConfirm = { viewModel.confirm {} },
+        onBack = onBack,
+    )
+}
+
+/** Stock (Step 41). */
+@Composable
+private fun StockRoute(onBack: () -> Unit) {
+    val viewModel: StockViewModel = viewModel()
+    val state by viewModel.uiState.collectAsState()
+
+    StockScreen(
+        state = state,
+        onQueryChange = viewModel::onQueryChange,
+        onIncludeInactiveChange = viewModel::onIncludeInactiveChange,
+        onRestock = { productId, quantity, note -> viewModel.restock(productId, quantity, note) {} },
+        onBack = onBack,
+    )
+}
+
+/** Transaction history (Step 42). */
+@Composable
+private fun HistoryRoute(onBack: () -> Unit) {
+    val viewModel: HistoryViewModel = viewModel()
+    val state by viewModel.uiState.collectAsState()
+
+    HistoryScreen(state = state, onFilterChange = viewModel::onFilterChange, onBack = onBack)
 }
 
 @Composable
