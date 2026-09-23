@@ -120,12 +120,17 @@ const bakiRows = all(`
   ORDER BY b.occurredAt`)
 if (bakiRows.length === 0) console.log('  none')
 for (const row of bakiRows) {
+  // A reversal's entry references the sale it undid, not itself (SaleRepository),
+  // so it should be the exact opposite of that sale's total, not equal to it.
+  const expected = row.entryType === 'REVERSAL' ? -Number(row.saleTotal) : Number(row.saleTotal)
   const matches =
     row.saleTotal == null
       ? 'NO MATCHING SALE'
-      : Number(row.saleTotal) === Number(row.amountDeltaPoisha)
-        ? 'equals its sale total'
-        : `DOES NOT equal its sale total ৳${taka(row.saleTotal)}`
+      : expected === Number(row.amountDeltaPoisha)
+        ? row.entryType === 'REVERSAL'
+          ? 'exactly undoes the sale it references'
+          : 'equals its sale total'
+        : `DOES NOT match the sale it references (৳${taka(row.saleTotal)})`
   console.log(`  ${row.entryType} ৳${taka(row.amountDeltaPoisha)} owed by ${row.name ?? '(customer gone)'} — ${matches}`)
   console.log(`    due ${day(row.dueDateEpochDay)}, reached server: ${when(row.serverReceivedAt)}`)
 }
@@ -138,7 +143,7 @@ const owes = all(`
 if (owes.length === 0) console.log('  no customers')
 for (const row of owes) console.log(`  ${row.name} — ৳${taka(row.owed)}`)
 
-console.log('\nWaiting to sync, by kind (sales and stock are not queued until Step 46 — D036)')
+console.log('\nWaiting to sync, by kind (empty once a sync has sent everything)')
 const queued = all(`SELECT entityType, status, COUNT(*) AS n FROM sync_outbox GROUP BY entityType, status`)
 if (queued.length === 0) console.log('  nothing')
 for (const row of queued) console.log(`  ${row.entityType} (${row.status}): ${row.n}`)

@@ -391,3 +391,38 @@ Reason, from how the screen is actually used and from published cart/POS guidanc
 The look is unchanged: every element is an existing `ClayCard`, `ClayButton`, `ClayChip` or `ClayTextField` (D029).
 
 Sources: [Justinmind — shopping cart UI best practices](https://www.justinmind.com/ui-design/shopping-cart); [UXPin — mobile navigation and the thumb zone](https://www.uxpin.com/studio/blog/mobile-navigation-examples/); [Scott & Conzola, *Designing Touch Screen Numeric Keypads: Effects of Finger Size, Key Size, and Key Spacing*](https://journals.sagepub.com/doi/10.1177/107118139704100180).
+
+---
+
+## D038 — A Sale Travels as One Sync Event, Applied in One Transaction
+Decision: a sale, its lines, its stock movements and (on credit) its baki entry travel as **one** sync event, whose payload is the whole `SaleTransaction`. The server applies it in one database transaction, and a pull returns it the same way — one change carrying the whole sale. The sale's own stock movements are never sent or returned on their own; a restock, damage, customer return or shelf count, which belong to no sale, travels as its own `StockMovement` event.
+
+Rejected: one event per row (a Sale event, then a SaleItem event, then a StockMovement event, then a BakiEntry event). Rejected: letting a pull page split a sale across two pages.
+
+Reason: D021 says the three parts move together or not at all, and that has to survive the trip to the server and back — not only the write on the phone. With one event per row, a push interrupted halfway leaves the server holding stock that left the shop with nothing owed for it, and the phone with no way to tell which half arrived. With one event, there is no half.
+
+Two consequences worth naming:
+- **The claim and the write are one transaction.** The server records "this event is applied" in the same transaction as the sale it applies (`applyInOneTransaction`). The older Product path claims first and writes after, so a crash between the two would mark an event applied that never was, and the phone's retry would be ignored as a duplicate — the failure M4's Step 67 tests for. The ledger path cannot fail that way.
+- **The server checks the arithmetic.** It recomputes the total from the lines with the shared rounding rule (D032) and confirms every movement and baki entry matches, refusing anything that does not add up (`checkPushedSale`). A total is never taken from the client, over sync or over REST.
+
+---
+
+## D039 — One Change Counter for Every Table a Device Pulls
+Decision: `product`, `customer`, `sale` and `stock_movement` all take their `change_seq` from one Postgres sequence, renamed in migration 004 from `product_change_seq` to `change_seq`. A pull reads a page from each table, merges them by that number, cuts the result to one page, and returns the last number as the cursor.
+
+Rejected: a sequence per table. Rejected: ordering a pull by `updated_at`.
+
+Reason: a pull is "everything after this one number". That only means something if all the tables number their changes from the same counter — with one sequence per table, a single cursor cannot say where a device got to in four of them, and four cursors would have to be kept in step with each other forever. Timestamps cannot do the job either: two rows can share one, and clocks move.
+
+The phone now follows pages to the end rather than reading one (`SyncEngine`, `MAX_PAGES_PER_SYNC`). A page is 500 changes; before this, a phone that had been offline for a busy week would have quietly received the first 500 and stopped, and looked fully synced.
+
+---
+
+## D040 — Stock Is Corrected by Counting the Shelf, Not by Editing the Number
+Decision: the Stock screen offers three changes — a delivery arriving (restock), goods lost or broken (damage), and counting the shelf (correction). A shelf count asks what is actually there and records the *difference* as a movement; it never writes the new number over the old one. Undoing is only offered for sales, from the transaction history (Step 43).
+
+Rejected: an "edit stock" field. Rejected: undoing a restock from the history list, as sales can be undone.
+
+Reason: stock is the sum of its movements and nothing else (D002, D020), so there is no number to edit — the shelf count is how a wrong ledger is put right, and it leaves a record saying the shelf was checked and by how much it was out. A restock typed wrongly is corrected the same way: count the shelf. Undoing a restock as a separate kind of reversal would need its own "which movement does this undo" link on every row, to solve a problem the count already solves.
+
+This also makes every movement type the PRD requires (section 9) reachable from a screen: restock, sale, return, damage and correction — the return being what a reversal writes when stock comes back (D033).

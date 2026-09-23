@@ -3,6 +3,7 @@ package com.hisab.app.data.baki
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.Query
+import java.time.Instant
 
 /**
  * Writing and reading baki entries. There is no update and no delete: a
@@ -32,6 +33,13 @@ interface BakiEntryDao {
      */
     @Query("SELECT COALESCE(SUM(amountDeltaPoisha), 0) FROM baki_entry WHERE customerId = :customerId")
     suspend fun balancePoisha(customerId: String): Long
+
+    /** Records that the server has this entry — sync bookkeeping, not history (D019). */
+    @Query("UPDATE baki_entry SET serverReceivedAt = :at WHERE id = :id AND serverReceivedAt IS NULL")
+    suspend fun markServerReceived(
+        id: String,
+        at: Instant,
+    )
 
     /** Really removes a row. Only for rows a test created. */
     @Query("DELETE FROM baki_entry WHERE id = :id")

@@ -6,6 +6,7 @@ import androidx.room.Insert
 import androidx.room.Query
 import com.hisab.app.data.product.ProductEntity
 import kotlinx.coroutines.flow.Flow
+import java.time.Instant
 
 /**
  * Reading and writing stock movements. There is no update and no delete:
@@ -109,6 +110,13 @@ interface StockMovementDao {
         excludeType: String,
         limit: Int = 100,
     ): Flow<List<MovementWithProduct>>
+
+    /** Records that the server has this movement — sync bookkeeping, not history (D019). */
+    @Query("UPDATE stock_movement SET serverReceivedAt = :at WHERE id = :id AND serverReceivedAt IS NULL")
+    suspend fun markServerReceived(
+        id: String,
+        at: Instant,
+    )
 
     /** Really removes a movement. Only for rows a test created, never for a shopkeeper's correction. */
     @Query("DELETE FROM stock_movement WHERE id = :id")

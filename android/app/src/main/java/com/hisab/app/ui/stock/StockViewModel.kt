@@ -76,12 +76,29 @@ class StockViewModel(
         productId: String,
         quantity: Quantity,
         note: String,
-        onDone: () -> Unit,
     ) {
-        viewModelScope.launch {
-            repository.restock(EntityId(productId), quantity, note)
-            onDone()
-        }
+        viewModelScope.launch { repository.restock(EntityId(productId), quantity, note) }
+    }
+
+    /** Records goods lost or broken. `quantity` is how much was lost, as a positive amount. */
+    fun damage(
+        productId: String,
+        quantity: Quantity,
+        note: String,
+    ) {
+        viewModelScope.launch { repository.damage(EntityId(productId), quantity, note) }
+    }
+
+    /**
+     * Records a shelf count: `counted` is what is actually there, and the
+     * ledger keeps the difference from what it said (D002).
+     */
+    fun count(
+        productId: String,
+        counted: Quantity,
+        note: String,
+    ) {
+        viewModelScope.launch { repository.count(EntityId(productId), counted, note) }
     }
 
     companion object {

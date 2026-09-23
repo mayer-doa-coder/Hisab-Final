@@ -58,13 +58,16 @@ import java.util.Locale
  * reads as 9am, because that is when the customer paid.
  *
  * Nothing on this screen edits anything. History is never rewritten
- * (CLAUDE.md); correcting a sale means recording its reversal, which is
- * Step 43.
+ * (CLAUDE.md). Tapping a sale opens it, and a sale can be undone from there
+ * by recording its opposite beside it — never by changing it (Step 43, D033).
+ * A sale that has been undone says so here, so the list tells the truth at a
+ * glance without opening anything.
  */
 @Composable
 fun HistoryScreen(
     state: HistoryUiState,
     onFilterChange: (HistoryFilter) -> Unit,
+    onOpenSale: (String) -> Unit,
     onBack: () -> Unit,
 ) {
     Column(
@@ -105,7 +108,7 @@ fun HistoryScreen(
                     ) {
                         items(items = state.entries, key = ::entryKey) { entry ->
                             when (entry) {
-                                is HistoryEntry.Sale -> SaleRow(entry)
+                                is HistoryEntry.Sale -> SaleRow(entry, onClick = { onOpenSale(entry.sale.id) })
                                 is HistoryEntry.Movement -> MovementRow(entry)
                             }
                         }
@@ -145,7 +148,10 @@ private fun entryKey(entry: HistoryEntry): String =
     }
 
 @Composable
-private fun SaleRow(entry: HistoryEntry.Sale) {
+private fun SaleRow(
+    entry: HistoryEntry.Sale,
+    onClick: () -> Unit,
+) {
     val locale = LocalConfiguration.current.locales[0]
     val currency = stringResource(R.string.currency_symbol)
     val sale = entry.sale
@@ -159,10 +165,20 @@ private fun SaleRow(entry: HistoryEntry.Sale) {
         }
     val accent = if (reversal) ClayColors.Danger else ClayColors.Money
 
-    ClayCard {
+    ClayCard(onClick = onClick) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(modifier = Modifier.weight(1f)) {
-                Badge(text = stringResource(label), colour = accent)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Badge(text = stringResource(label), colour = accent)
+                    if (entry.reversed) {
+                        Row(modifier = Modifier.padding(start = 8.dp)) {
+                            Badge(
+                                text = stringResource(R.string.sale_reversed_badge),
+                                colour = ClayColors.Danger,
+                            )
+                        }
+                    }
+                }
                 ClayText(
                     text = stringResource(R.string.sale_items_count, entry.lineCount),
                     size = 13,
@@ -243,7 +259,7 @@ private fun MovementRow(entry: HistoryEntry.Movement) {
 }
 
 @Composable
-private fun Badge(
+internal fun Badge(
     text: String,
     colour: Color,
 ) {
@@ -299,7 +315,7 @@ fun whenText(
 
 /** The same thing, with the two day names read from resources. */
 @Composable
-private fun rememberWhenText(
+internal fun rememberWhenText(
     instant: Instant,
     locale: Locale,
 ): String =

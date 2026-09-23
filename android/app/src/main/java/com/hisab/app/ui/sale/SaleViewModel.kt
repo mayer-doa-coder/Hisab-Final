@@ -27,6 +27,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.time.DateTimeException
 import java.time.LocalDate
 import java.time.format.DateTimeParseException
 
@@ -320,13 +321,32 @@ sealed interface DueDate {
 }
 
 /**
- * Reads a due date a shopkeeper typed, as `yyyy-MM-dd`. Bangla digits are
- * accepted as readily as ASCII ones, and blank means "no date", which is
- * allowed — PRD section 10 makes the due date optional.
+ * Reads a due date a shopkeeper typed. Bangla digits are accepted as readily
+ * as ASCII ones, and blank means "no date", which is allowed — PRD section 10
+ * makes the due date optional.
+ *
+ * Two shapes are accepted: `yyyy-MM-dd`, and 8 plain digits (`yyyyMMdd`) with
+ * no separators. The plain-digit form exists because the field's keyboard is
+ * a numeric keypad, which does not offer a "-" key on stock Android/Samsung
+ * keyboards — without it, the hyphenated form the field's own hint shows
+ * could never actually be typed on the phone.
  */
 fun parseDueDate(input: String): DueDate {
     val normalized = normalizeDigits(input).trim()
     if (normalized.isEmpty()) return DueDate.None
+    if (normalized.length == 8 && normalized.all(Char::isDigit)) {
+        return try {
+            DueDate.On(
+                LocalDate.of(
+                    normalized.substring(0, 4).toInt(),
+                    normalized.substring(4, 6).toInt(),
+                    normalized.substring(6, 8).toInt(),
+                ),
+            )
+        } catch (_: DateTimeException) {
+            DueDate.Invalid
+        }
+    }
     return try {
         DueDate.On(LocalDate.parse(normalized))
     } catch (_: DateTimeParseException) {

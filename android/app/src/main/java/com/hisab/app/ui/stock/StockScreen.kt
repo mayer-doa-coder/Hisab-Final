@@ -1,6 +1,7 @@
 package com.hisab.app.ui.stock
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -46,15 +47,19 @@ import com.hisab.app.ui.theme.ClayTextField
 import com.hisab.app.ui.theme.ClayUserText
 
 /**
- * Current stock per product, and adding to it (Step 41).
+ * Current stock per product, and the three ways a shopkeeper changes it by
+ * hand (Step 41): a delivery arriving, goods lost or broken, and counting the
+ * shelf.
  *
  * Every number here is summed from the movement ledger, never stored (D020),
- * which is why a restock shows up the moment it is saved.
+ * which is why a change shows up the moment it is saved.
  *
  * Negative stock is shown as negative, in the danger colour, with a line
  * saying what it usually means. It is not hidden or clamped to zero: a
  * negative number is the ledger saying a delivery was never recorded, and
- * that is worth a shopkeeper's attention (D031).
+ * that is worth a shopkeeper's attention (D031). Counting the shelf is how it
+ * gets put right, and that writes a correction with a reason — never a silent
+ * edit of the number (D002).
  */
 @Composable
 fun StockScreen(
@@ -62,25 +67,33 @@ fun StockScreen(
     onQueryChange: (String) -> Unit,
     onIncludeInactiveChange: (Boolean) -> Unit,
     onRestock: (productId: String, quantity: Quantity, note: String) -> Unit,
+    onDamage: (productId: String, quantity: Quantity, note: String) -> Unit,
+    onCount: (productId: String, counted: Quantity, note: String) -> Unit,
     onBack: () -> Unit,
 ) {
     var queryText by rememberSaveable { mutableStateOf(state.query) }
-    var restocking by rememberSaveable { mutableStateOf<String?>(null) }
-    // Which product was last restocked, so the confirmation can name it. Kept
-    // as state rather than a timed message, so it survives a rotation or a
-    // language switch — and it clears as soon as another restock starts.
-    var justRestocked by rememberSaveable { mutableStateOf<String?>(null) }
+    var changingId by rememberSaveable { mutableStateOf<String?>(null) }
+    var changeKind by rememberSaveable { mutableStateOf(StockChange.RESTOCK) }
+    // What was last recorded, so the confirmation can say which. Kept as state
+    // rather than a timed message, so it survives a rotation or a language
+    // switch — and it clears as soon as another change starts.
+    var justDid by rememberSaveable { mutableStateOf<StockChange?>(null) }
 
-    val target = state.products.firstOrNull { it.product.id == restocking }
+    val target = state.products.firstOrNull { it.product.id == changingId }
     if (target != null) {
-        RestockSheet(
+        StockChangeSheet(
+            kind = changeKind,
             entry = target,
-            onConfirm = { quantity, note ->
-                onRestock(target.product.id, quantity, note)
-                justRestocked = target.product.id
-                restocking = null
+            onConfirm = { amount, note ->
+                when (changeKind) {
+                    StockChange.RESTOCK -> onRestock(target.product.id, amount, note)
+                    StockChange.DAMAGE -> onDamage(target.product.id, amount, note)
+                    StockChange.COUNT -> onCount(target.product.id, amount, note)
+                }
+                justDid = changeKind
+                changingId = null
             },
-            onDismiss = { restocking = null },
+            onDismiss = { changingId = null },
         )
     }
 
@@ -113,9 +126,16 @@ fun StockScreen(
             )
         }
 
-        if (justRestocked != null) {
+        justDid?.let { kind ->
             ClayText(
-                text = stringResource(R.string.stock_added),
+                text =
+                    stringResource(
+                        when (kind) {
+                            StockChange.RESTOCK -> R.string.stock_added
+                            StockChange.DAMAGE -> R.string.stock_damaged
+                            StockChange.COUNT -> R.string.stock_counted
+                        },
+                    ),
                 size = 14,
                 weight = FontWeight.Bold,
                 color = ClayColors.Money,
@@ -139,15 +159,18 @@ fun StockScreen(
                         items(items = state.products, key = { it.product.id }) { entry ->
                             StockRow(
                                 entry = entry,
-                                onRestock = {
-                                    justRestocked = null
-                                    restocking = entry.product.id
+                                onChange = { kind ->
+                                    justDid = null
+                                    changeKind = kind
+                                    changingId = entry.product.id
                                 },
                             )
                         }
                     }
                 }
 
+                // Nothing is said until the first read has come back, so an
+                // empty screen never flashes "no products" over real data.
                 state.loaded && queryText.isNotEmpty() -> {
                     CentredMessage(stringResource(R.string.stock_search_empty), null)
                 }
@@ -163,10 +186,13 @@ fun StockScreen(
     }
 }
 
+/** The three ways stock changes by hand. A sale changes it too, but through the sale (D021). */
+enum class StockChange { RESTOCK, DAMAGE, COUNT }
+
 @Composable
 private fun StockRow(
     entry: ProductWithStock,
-    onRestock: () -> Unit,
+    onChange: (StockChange) -> Unit,
 ) {
     val locale = LocalConfiguration.current.locales[0]
     val stock = Quantity(entry.stockScaled)
@@ -203,11 +229,31 @@ private fun StockRow(
                 }
             }
 
+            // Adding stock is the common one, so it keeps the button.
             ClayButton(
                 text = stringResource(R.string.stock_add_action),
-                onClick = onRestock,
+                onClick = { onChange(StockChange.RESTOCK) },
                 style = ClayButtonStyle.SOFT,
                 leadingIcon = painterResource(R.drawable.ic_add),
+            )
+        }
+
+        // The rarer two sit under it as plain words rather than more buttons,
+        // so the row stays readable on a 720-wide screen and the common action
+        // keeps its weight.
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(18.dp),
+        ) {
+            SmallAction(
+                text = stringResource(R.string.stock_damage_action),
+                colour = ClayColors.Danger,
+                onClick = { onChange(StockChange.DAMAGE) },
+            )
+            SmallAction(
+                text = stringResource(R.string.stock_count_action),
+                colour = ClayColors.Primary,
+                onClick = { onChange(StockChange.COUNT) },
             )
         }
 
@@ -227,32 +273,70 @@ private fun StockRow(
     }
 }
 
+@Composable
+private fun SmallAction(
+    text: String,
+    colour: androidx.compose.ui.graphics.Color,
+    onClick: () -> Unit,
+) {
+    ClayText(
+        text = text,
+        size = 14,
+        weight = FontWeight.Bold,
+        color = colour,
+        modifier =
+            Modifier
+                .clickable(onClick = onClick)
+                // Padding, not a smaller font, is what keeps this a real tap
+                // target next to its neighbour (D029).
+                .padding(vertical = 8.dp, horizontal = 4.dp),
+    )
+}
+
 /**
- * Adding stock, in place rather than on another screen.
+ * Recording a stock change, in place rather than on another screen.
  *
- * It shows what is there now and what it will become, side by side, before
- * anything is saved — so the shopkeeper checks the arithmetic against the
- * shelf rather than trusting it afterwards.
+ * Whichever kind it is, it shows what is there now and what it will become,
+ * side by side, before anything is saved — so the shopkeeper checks the
+ * arithmetic against the shelf rather than trusting it afterwards. For a
+ * count, it also shows the difference that will be recorded, because that
+ * difference is the thing the ledger keeps.
  */
 @Composable
-private fun RestockSheet(
+private fun StockChangeSheet(
+    kind: StockChange,
     entry: ProductWithStock,
     onConfirm: (Quantity, String) -> Unit,
     onDismiss: () -> Unit,
 ) {
     val locale = LocalConfiguration.current.locales[0]
-    var amountText by rememberSaveable(entry.product.id) { mutableStateOf("") }
-    var note by rememberSaveable(entry.product.id) { mutableStateOf("") }
-    var showError by rememberSaveable(entry.product.id) { mutableStateOf(false) }
+    val key = "${entry.product.id}:$kind"
+    var amountText by rememberSaveable(key) { mutableStateOf("") }
+    var note by rememberSaveable(key) { mutableStateOf("") }
+    var showError by rememberSaveable(key) { mutableStateOf(false) }
 
     val parsed = parseQuantity(amountText)
     val current = Quantity(entry.stockScaled)
-    val after = if (parsed == null) null else current + parsed
+    val after =
+        when {
+            parsed == null -> null
+            kind == StockChange.RESTOCK -> current + parsed
+            kind == StockChange.DAMAGE -> current - parsed
+            else -> parsed
+        }
+    val unit = unitLabel(entry.product.unit)
 
     Dialog(onDismissRequest = onDismiss) {
         ClayCard {
             ClayText(
-                text = stringResource(R.string.stock_add_title),
+                text =
+                    stringResource(
+                        when (kind) {
+                            StockChange.RESTOCK -> R.string.stock_add_title
+                            StockChange.DAMAGE -> R.string.stock_damage_title
+                            StockChange.COUNT -> R.string.stock_count_title
+                        },
+                    ),
                 size = 20,
                 weight = FontWeight.Bold,
             )
@@ -269,20 +353,32 @@ private fun RestockSheet(
                     amountText = it
                     showError = false
                 },
-                fieldTag = "field_restock_quantity",
-                label = stringResource(R.string.stock_add_quantity_label),
+                fieldTag = "field_stock_quantity",
+                label =
+                    stringResource(
+                        when (kind) {
+                            StockChange.RESTOCK -> R.string.stock_add_quantity_label
+                            StockChange.DAMAGE -> R.string.stock_damage_quantity_label
+                            StockChange.COUNT -> R.string.stock_count_quantity_label
+                        },
+                    ),
                 keyboardType = KeyboardType.Decimal,
-                errorText =
-                    if (showError) stringResource(R.string.error_quantity_invalid) else null,
+                errorText = if (showError) stringResource(R.string.error_quantity_invalid) else null,
                 modifier = Modifier.padding(top = 16.dp),
             )
 
             ClayTextField(
                 value = note,
                 onValueChange = { note = it },
-                fieldTag = "field_restock_note",
-                label = stringResource(R.string.stock_add_note_label),
-                placeholder = stringResource(R.string.stock_add_note_hint),
+                fieldTag = "field_stock_note",
+                label =
+                    stringResource(
+                        if (kind == StockChange.RESTOCK) R.string.stock_add_note_label else R.string.stock_reason_label,
+                    ),
+                placeholder =
+                    stringResource(
+                        if (kind == StockChange.RESTOCK) R.string.stock_add_note_hint else R.string.stock_reason_hint,
+                    ),
                 modifier = Modifier.padding(top = 12.dp),
             )
 
@@ -290,16 +386,34 @@ private fun RestockSheet(
                 BeforeAfter(
                     label = stringResource(R.string.stock_current_label),
                     value = current.toDisplayString(locale),
-                    unit = unitLabel(entry.product.unit),
+                    unit = unit,
                     highlight = false,
                     modifier = Modifier.weight(1f),
                 )
                 BeforeAfter(
                     label = stringResource(R.string.stock_after_label),
                     value = after?.toDisplayString(locale) ?: "—",
-                    unit = unitLabel(entry.product.unit),
+                    unit = unit,
                     highlight = true,
                     modifier = Modifier.weight(1f),
+                )
+            }
+
+            if (kind == StockChange.COUNT) {
+                val difference = if (after == null) null else after - current
+                ClayUserText(
+                    text =
+                        scriptAwareText(
+                            stringResource(R.string.stock_difference_label) + ": " +
+                                when {
+                                    difference == null -> "—"
+                                    difference.scaledUnits > 0 -> "+${difference.toDisplayString(locale)} $unit"
+                                    else -> "${difference.toDisplayString(locale)} $unit"
+                                },
+                        ),
+                    size = 13,
+                    color = ClayColors.InkMuted,
+                    modifier = Modifier.padding(top = 10.dp),
                 )
             }
 
@@ -314,12 +428,19 @@ private fun RestockSheet(
                     modifier = Modifier.weight(1f),
                 )
                 ClayButton(
-                    text = stringResource(R.string.action_add),
+                    text =
+                        stringResource(
+                            if (kind == StockChange.RESTOCK) R.string.action_add else R.string.action_record,
+                        ),
                     onClick = {
-                        // A restock must be a positive amount — the domain
-                        // refuses anything else, so the screen says so rather
-                        // than letting the write throw.
-                        if (parsed == null || parsed.scaledUnits <= 0) showError = true else onConfirm(parsed, note)
+                        // A delivery and a loss must be a positive amount, and
+                        // a shelf count cannot be negative — the domain refuses
+                        // anything else, so the screen says so rather than
+                        // letting the write throw.
+                        val valid =
+                            parsed != null &&
+                                if (kind == StockChange.COUNT) parsed.scaledUnits >= 0 else parsed.scaledUnits > 0
+                        if (!valid) showError = true else onConfirm(parsed, note)
                     },
                     modifier = Modifier.weight(1f),
                 )

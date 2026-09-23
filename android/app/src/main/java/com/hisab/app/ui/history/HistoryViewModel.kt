@@ -30,6 +30,8 @@ sealed interface HistoryEntry {
     data class Sale(
         val sale: SaleEntity,
         val lineCount: Int,
+        /** True once a reversal of this sale has been recorded (Step 43). */
+        val reversed: Boolean,
     ) : HistoryEntry {
         override val occurredAt: Instant get() = sale.occurredAt
     }
@@ -79,7 +81,7 @@ class HistoryViewModel(
             val entries =
                 buildList {
                     if (currentFilter != HistoryFilter.STOCK) {
-                        saleRows.forEach { add(HistoryEntry.Sale(it.sale, it.lineCount)) }
+                        saleRows.forEach { add(HistoryEntry.Sale(it.sale, it.lineCount, it.reversed)) }
                     }
                     if (currentFilter != HistoryFilter.SALES) {
                         movementRows.forEach { add(HistoryEntry.Movement(it.movement, it.productName)) }

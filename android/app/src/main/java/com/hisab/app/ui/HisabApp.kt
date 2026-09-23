@@ -23,6 +23,8 @@ import com.hisab.app.data.product.ProductEntity
 import com.hisab.app.data.product.ProductWriteResult
 import com.hisab.app.ui.history.HistoryScreen
 import com.hisab.app.ui.history.HistoryViewModel
+import com.hisab.app.ui.history.SaleDetailScreen
+import com.hisab.app.ui.history.SaleDetailViewModel
 import com.hisab.app.ui.product.ProductEditScreen
 import com.hisab.app.ui.product.ProductListScreen
 import com.hisab.app.ui.product.ProductViewModel
@@ -41,6 +43,7 @@ private const val ROUTE_PRODUCT_FORM = "product_form"
 private const val ROUTE_SALE = "sale"
 private const val ROUTE_STOCK = "stock"
 private const val ROUTE_HISTORY = "history"
+private const val ROUTE_SALE_DETAIL = "sale_detail"
 private const val ROUTE_SYNC = "sync"
 
 /**
@@ -60,6 +63,7 @@ fun HisabApp(
         val state by viewModel.uiState.collectAsState()
         var route by rememberSaveable { mutableStateOf(ROUTE_HOME) }
         var editingId by rememberSaveable { mutableStateOf<String?>(null) }
+        var openSaleId by rememberSaveable { mutableStateOf<String?>(null) }
         var showConflict by rememberSaveable { mutableStateOf(false) }
 
         when (route) {
@@ -106,7 +110,18 @@ fun HisabApp(
 
             ROUTE_HISTORY -> {
                 BackHandler { route = ROUTE_HOME }
-                HistoryRoute(onBack = { route = ROUTE_HOME })
+                HistoryRoute(
+                    onOpenSale = { saleId ->
+                        openSaleId = saleId
+                        route = ROUTE_SALE_DETAIL
+                    },
+                    onBack = { route = ROUTE_HOME },
+                )
+            }
+
+            ROUTE_SALE_DETAIL -> {
+                BackHandler { route = ROUTE_HISTORY }
+                SaleDetailRoute(saleId = openSaleId, onBack = { route = ROUTE_HISTORY })
             }
 
             ROUTE_SYNC -> {
@@ -219,18 +234,47 @@ private fun StockRoute(onBack: () -> Unit) {
         state = state,
         onQueryChange = viewModel::onQueryChange,
         onIncludeInactiveChange = viewModel::onIncludeInactiveChange,
-        onRestock = { productId, quantity, note -> viewModel.restock(productId, quantity, note) {} },
+        onRestock = viewModel::restock,
+        onDamage = viewModel::damage,
+        onCount = viewModel::count,
         onBack = onBack,
     )
 }
 
 /** Transaction history (Step 42). */
 @Composable
-private fun HistoryRoute(onBack: () -> Unit) {
+private fun HistoryRoute(
+    onOpenSale: (String) -> Unit,
+    onBack: () -> Unit,
+) {
     val viewModel: HistoryViewModel = viewModel()
     val state by viewModel.uiState.collectAsState()
 
-    HistoryScreen(state = state, onFilterChange = viewModel::onFilterChange, onBack = onBack)
+    HistoryScreen(
+        state = state,
+        onFilterChange = viewModel::onFilterChange,
+        onOpenSale = onOpenSale,
+        onBack = onBack,
+    )
+}
+
+/**
+ * One sale, and undoing it (Steps 43–44).
+ *
+ * Staying on this screen after a reversal is deliberate: it then shows the
+ * sale marked reversed, which is the answer to "did that work?".
+ */
+@Composable
+private fun SaleDetailRoute(
+    saleId: String?,
+    onBack: () -> Unit,
+) {
+    val viewModel: SaleDetailViewModel = viewModel()
+    val state by viewModel.uiState.collectAsState()
+
+    LaunchedEffect(saleId) { saleId?.let(viewModel::open) }
+
+    SaleDetailScreen(state = state, onReverse = viewModel::reverse, onBack = onBack)
 }
 
 @Composable

@@ -84,7 +84,7 @@
     <string name="sale_customer_label">Who owes it</string>
     <string name="sale_customer_hint">e.g. Rahim</string>
     <string name="sale_due_date_label">Due date (optional)</string>
-    <string name="sale_due_date_hint">e.g. 2026-10-15</string>
+    <string name="sale_due_date_hint">e.g. 20261015 (year month day)</string>
     <string name="sale_confirm_cash">Confirm cash sale</string>
     <string name="sale_confirm_credit">Confirm sale on baki</string>
     <string name="sale_saved_cash">Sale saved</string>
@@ -135,4 +135,37 @@
     <string name="action_add">Add</string>
     <string name="cd_increase">Increase</string>
     <string name="cd_decrease">Decrease</string>
+
+    <!-- Reversal and stock corrections (M2, Steps 43-44) -->
+    <string name="sale_detail_title">Sale details</string>
+    <string name="sale_detail_owed_by">Owed by: %1$s</string>
+    <string name="sale_detail_lines">Items</string>
+    <string name="sale_detail_synced">Reached the server</string>
+    <string name="sale_detail_not_synced">Not sent to the server yet</string>
+    <string name="sale_reverse_action">Reverse this sale</string>
+    <string name="sale_reverse_confirm_title">Reverse this sale?</string>
+    <string name="sale_reverse_confirm_stock">The items go back into stock.</string>
+    <string name="sale_reverse_confirm_baki">%2$s comes off what %1$s owes.</string>
+    <string name="sale_reverse_confirm_history">The original sale stays in the history, with the reversal beside it.</string>
+    <string name="sale_reverse_confirm_action">Yes, reverse it</string>
+    <string name="sale_reversed_badge">Reversed</string>
+    <string name="sale_reversed_on">Reversed · %1$s</string>
+    <string name="sale_is_reversal">This undid a sale · %1$s</string>
+    <string name="sale_reversal_saved">Sale reversed — the items are back in stock</string>
+    <string name="sale_reversal_saved_credit">Sale reversed — the items are back in stock and the baki is cleared</string>
+    <string name="sale_already_reversed">This sale was already reversed</string>
+    <string name="sale_not_found">That sale could not be found</string>
+
+    <string name="stock_damage_action">Damaged</string>
+    <string name="stock_count_action">Count</string>
+    <string name="stock_damage_title">Damaged or lost</string>
+    <string name="stock_damage_quantity_label">How much was lost</string>
+    <string name="stock_count_title">Count the shelf</string>
+    <string name="stock_count_quantity_label">How much is actually there</string>
+    <string name="stock_reason_label">Reason (optional)</string>
+    <string name="stock_reason_hint">e.g. broken</string>
+    <string name="stock_difference_label">Difference</string>
+    <string name="stock_damaged">Loss recorded</string>
+    <string name="stock_counted">Count recorded</string>
+    <string name="action_record">Record</string>
 </resources>

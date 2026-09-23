@@ -180,6 +180,7 @@ class SyncEngineTest {
             engine().sync()
 
             api.pulled = listOf(serverProduct("server-2", "New name", revision = 2))
+            api.pullCursor = 2
             engine().sync()
 
             val stored = repository.byId(EntityId("server-2"))!!
@@ -198,6 +199,7 @@ class SyncEngineTest {
                 listOf(
                     serverProduct("server-3", "Going away", revision = 2, deletedAt = "2026-09-14T11:00:00Z"),
                 )
+            api.pullCursor = 2
             engine().sync()
 
             assertTrue(repository.observe(includeInactive = true).first().none { it.id == "server-3" })
@@ -216,7 +218,9 @@ class SyncEngineTest {
             api.pulled = emptyList()
             engine().sync()
 
-            assertEquals(listOf(0L, 12L), api.requestedCursors)
+            // 0, then 12 to find the end of the first sync's changes, then 12
+            // again on the next sync: a pull asks until a page brings nothing.
+            assertEquals(listOf(0L, 12L, 12L), api.requestedCursors)
         }
 
     // Nothing new to receive must not move the place it carries on from
@@ -232,7 +236,7 @@ class SyncEngineTest {
             engine().sync()
             engine().sync()
 
-            assertEquals(listOf(0L, 9L, 9L), api.requestedCursors)
+            assertEquals(listOf(0L, 9L, 9L, 9L), api.requestedCursors)
         }
 
     @Test
@@ -289,7 +293,7 @@ private class FakeSyncApi : SyncApi {
     var pushStatus: String = PushResult.STATUS_APPLIED
     var pushCode: String? = null
     var pulled: List<PulledChange> = emptyList()
-    var pullCursor: Long = 0
+    var pullCursor: Long = 1
 
     override suspend fun login(
         email: String,
@@ -307,11 +311,18 @@ private class FakeSyncApi : SyncApi {
         return events.map { PushResult(it.eventId, pushStatus, pushCode) }
     }
 
+    /**
+     * Pages like the real server: everything after the caller's cursor, and
+     * nothing once the caller has caught up. A test that wants a second round
+     * of changes moves `pullCursor` forward, which is what a real change to
+     * the data does.
+     */
     override suspend fun pull(
         token: String,
         afterCursor: Long,
     ): PullResult {
         requestedCursors += afterCursor
-        return PullResult(pulled, if (pulled.isEmpty()) afterCursor else pullCursor)
+        if (afterCursor >= pullCursor) return PullResult(emptyList(), afterCursor)
+        return PullResult(pulled, pullCursor)
     }
 }

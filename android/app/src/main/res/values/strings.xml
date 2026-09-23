@@ -91,7 +91,7 @@
     <string name="sale_customer_label">কার বাকি</string>
     <string name="sale_customer_hint">যেমন: রহিম</string>
     <string name="sale_due_date_label">ফেরত দেওয়ার তারিখ (ঐচ্ছিক)</string>
-    <string name="sale_due_date_hint">যেমন: 2026-10-15</string>
+    <string name="sale_due_date_hint">যেমন: 20261015 (বছর মাস দিন)</string>
     <string name="sale_confirm_cash">নগদ বিক্রি নিশ্চিত করুন</string>
     <string name="sale_confirm_credit">বাকিতে বিক্রি নিশ্চিত করুন</string>
     <string name="sale_saved_cash">বিক্রি সংরক্ষিত হয়েছে</string>
@@ -142,4 +142,37 @@
     <string name="action_add">যোগ করুন</string>
     <string name="cd_increase">বাড়ান</string>
     <string name="cd_decrease">কমান</string>
+
+    <!-- Reversal and stock corrections (M2, Steps 43-44) -->
+    <string name="sale_detail_title">বিক্রির বিবরণ</string>
+    <string name="sale_detail_owed_by">কার বাকি: %1$s</string>
+    <string name="sale_detail_lines">পণ্য</string>
+    <string name="sale_detail_synced">সার্ভারে পৌঁছেছে</string>
+    <string name="sale_detail_not_synced">এখনো সার্ভারে পাঠানো হয়নি</string>
+    <string name="sale_reverse_action">বিক্রি বাতিল করুন</string>
+    <string name="sale_reverse_confirm_title">এই বিক্রি বাতিল করবেন?</string>
+    <string name="sale_reverse_confirm_stock">পণ্যগুলো স্টকে ফেরত যাবে।</string>
+    <string name="sale_reverse_confirm_baki">%1$s-এর বাকি থেকে %2$s কমবে।</string>
+    <string name="sale_reverse_confirm_history">আসল বিক্রিটি ইতিহাসে থেকে যাবে, পাশে বাতিলের হিসাবও থাকবে।</string>
+    <string name="sale_reverse_confirm_action">হ্যাঁ, বাতিল করুন</string>
+    <string name="sale_reversed_badge">বাতিল হয়েছে</string>
+    <string name="sale_reversed_on">বাতিল হয়েছে · %1$s</string>
+    <string name="sale_is_reversal">এটি একটি বিক্রি বাতিল করেছে · %1$s</string>
+    <string name="sale_reversal_saved">বিক্রি বাতিল হয়েছে — পণ্য স্টকে ফেরত গেছে</string>
+    <string name="sale_reversal_saved_credit">বিক্রি বাতিল হয়েছে — পণ্য স্টকে ফেরত গেছে, বাকি কমেছে</string>
+    <string name="sale_already_reversed">এই বিক্রি আগেই বাতিল করা হয়েছে</string>
+    <string name="sale_not_found">বিক্রিটি পাওয়া যায়নি</string>
+
+    <string name="stock_damage_action">নষ্ট</string>
+    <string name="stock_count_action">গুনে দেখুন</string>
+    <string name="stock_damage_title">নষ্ট বা হারানো</string>
+    <string name="stock_damage_quantity_label">কত নষ্ট হলো</string>
+    <string name="stock_count_title">তাক গুনে ঠিক করুন</string>
+    <string name="stock_count_quantity_label">তাকে আসলে কত আছে</string>
+    <string name="stock_reason_label">কারণ (ঐচ্ছিক)</string>
+    <string name="stock_reason_hint">যেমন: ভেঙে গেছে</string>
+    <string name="stock_difference_label">পার্থক্য</string>
+    <string name="stock_damaged">নষ্ট লেখা হয়েছে</string>
+    <string name="stock_counted">গণনা লেখা হয়েছে</string>
+    <string name="action_record">লিখে রাখুন</string>
 </resources>

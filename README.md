@@ -101,6 +101,18 @@ curl -X POST http://127.0.0.1:3000/auth/login -H "Content-Type: application/json
 curl http://127.0.0.1:3000/health -H "Authorization: Bearer PASTE_TOKEN_HERE"
 # {"status":"ok"}
 ```
+The endpoints, all behind that token, with the shop always taken from it and never from the request (D015):
+
+```text
+POST /auth/login
+GET  /health
+POST /products            PUT /products/:id        GET /products
+POST /sales               GET /sales               GET /sales/:id
+POST /sales/:id/reversal
+GET  /stock               GET /stock/:productId    POST /stock/movements
+POST /sync/push           GET /sync/changes
+```
+
 `rahim@example.com` is a made-up demo account that lives only in memory while the server runs (`DECISIONS.md` D027). It is not a real account, and it goes away when real user storage arrives.
 
 ### 4. Android app

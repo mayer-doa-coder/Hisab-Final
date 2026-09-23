@@ -63,6 +63,30 @@ async function push(app: App, token: string, events: Record<string, unknown>[]) 
   })
 }
 
+/**
+ * Every change after a cursor, following pages to the end. A pull returns at
+ * most one page, so a test that asks "is my change in there?" must read them
+ * all — otherwise it passes or fails depending on how many rows earlier test
+ * runs left in the local database. (CI starts from an empty one; a developer's
+ * machine does not.)
+ */
+async function pullAll(
+  app: App,
+  token: string,
+  after?: number,
+): Promise<{ events: Array<ReturnType<typeof JSON.parse>>; cursor: number }> {
+  const events: Array<ReturnType<typeof JSON.parse>> = []
+  let cursor = after
+  for (;;) {
+    const page = (await pull(app, token, cursor)).json()
+    events.push(...page.events)
+    if (page.events.length === 0 || page.cursor === cursor) {
+      return { events, cursor: page.cursor }
+    }
+    cursor = page.cursor
+  }
+}
+
 async function pull(app: App, token: string, cursor?: number) {
   const query = cursor === undefined ? '' : `?after=${cursor}`
   return app.inject({
@@ -286,7 +310,7 @@ test('a pushed change comes back in a pull', async () => {
   const id = randomUUID()
   await push(app, token, [event(id, { payload: productPayload(`Pulled ${id.slice(0, 8)}`) })])
 
-  const body = (await pull(app, token)).json()
+  const body = await pullAll(app, token)
   const mine = body.events.filter((e: { entityId: string }) => e.entityId === id)
 
   assert.equal(mine.length, 1)
@@ -301,7 +325,7 @@ test('a pushed change comes back in a pull', async () => {
 test('a product created through the product endpoint also comes back in a pull', async () => {
   const app = buildApp()
   const token = await loginToken(app)
-  const before = (await pull(app, token)).json().cursor
+  const before = (await pullAll(app, token)).cursor
   const id = randomUUID()
   const name = `Rest made ${id.slice(0, 8)}`
 
@@ -312,7 +336,7 @@ test('a product created through the product endpoint also comes back in a pull',
     payload: { id, ...productPayload(name) },
   })
 
-  const body = (await pull(app, token, before)).json()
+  const body = await pullAll(app, token, before)
   const mine = body.events.filter((e: { entityId: string }) => e.entityId === id)
 
   assert.equal(mine.length, 1)
@@ -326,7 +350,7 @@ test('asking again with the returned cursor does not repeat what was already see
   const id = randomUUID()
   await push(app, token, [event(id, { payload: productPayload(`Cursor ${id.slice(0, 8)}`) })])
 
-  const first = (await pull(app, token)).json()
+  const first = await pullAll(app, token)
   assert.ok(first.events.some((e: { entityId: string }) => e.entityId === id))
 
   const second = (await pull(app, token, first.cursor)).json()
@@ -342,7 +366,7 @@ test('asking again with the returned cursor does not repeat what was already see
     }),
   ])
 
-  const third = (await pull(app, token, first.cursor)).json()
+  const third = await pullAll(app, token, first.cursor)
   const mine = third.events.filter((e: { entityId: string }) => e.entityId === id)
   assert.equal(mine.length, 1)
   assert.equal(mine[0].operation, 'update')
@@ -354,10 +378,10 @@ test('a deletion is something a pull tells other devices about', async () => {
   const token = await loginToken(app)
   const id = randomUUID()
   await push(app, token, [event(id, { payload: productPayload(`Tombstone ${id.slice(0, 8)}`) })])
-  const before = (await pull(app, token)).json().cursor
+  const before = (await pullAll(app, token)).cursor
   await push(app, token, [event(id, { operation: 'delete', baseRevision: 1 })])
 
-  const body = (await pull(app, token, before)).json()
+  const body = await pullAll(app, token, before)
   const mine = body.events.filter((e: { entityId: string }) => e.entityId === id)
 
   assert.equal(mine.length, 1)
@@ -385,7 +409,7 @@ test('a pull never returns another shop changes', async () => {
   const id = randomUUID()
   await push(app, shopOne, [event(id, { payload: productPayload(`Private ${id.slice(0, 8)}`) })])
 
-  const seenByOther = (await pull(app, shopTwo)).json().events
+  const seenByOther = (await pullAll(app, shopTwo)).events
 
   assert.ok(!seenByOther.some((e: { entityId: string }) => e.entityId === id))
 })

@@ -16,3 +16,10 @@ export type EntityId = string & { readonly __brand: 'EntityId' }
 export function generateId(): EntityId {
   return randomUUID() as EntityId
 }
+
+/**
+ * Language-neutral status code (D011): the id sent for a new row is already
+ * used by a different row — most often one belonging to another shop, which
+ * must never be overwritten or revealed.
+ */
+export const ID_TAKEN = 'ID_TAKEN'

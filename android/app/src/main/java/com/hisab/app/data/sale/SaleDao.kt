@@ -5,6 +5,7 @@ import androidx.room.Embedded
 import androidx.room.Insert
 import androidx.room.Query
 import kotlinx.coroutines.flow.Flow
+import java.time.Instant
 
 /**
  * Reading and writing sales. There is no update and no delete: confirmed
@@ -73,7 +74,9 @@ interface SaleDao {
      */
     @Query(
         """
-        SELECT s.*, (SELECT COUNT(*) FROM sale_item i WHERE i.saleId = s.id) AS lineCount
+        SELECT s.*,
+               (SELECT COUNT(*) FROM sale_item i WHERE i.saleId = s.id) AS lineCount,
+               EXISTS (SELECT 1 FROM sale r WHERE r.reversesSaleId = s.id) AS reversed
         FROM sale s
         WHERE s.shopId = :shopId
         ORDER BY s.occurredAt DESC, s.id DESC
@@ -85,6 +88,29 @@ interface SaleDao {
         limit: Int = 100,
     ): Flow<List<SaleSummary>>
 
+    /** One sale's lines with each product's name and unit joined on, for the sale detail screen (Step 43). */
+    @Query(
+        """
+        SELECT i.*, p.name AS productName, p.unit AS productUnit
+        FROM sale_item i
+        LEFT JOIN product p ON p.id = i.productId
+        WHERE i.saleId = :saleId
+        ORDER BY p.name COLLATE NOCASE ASC, i.productId ASC
+        """,
+    )
+    suspend fun itemsWithProductFor(saleId: String): List<SaleItemWithProduct>
+
+    /**
+     * Records that the server has this sale. The only column of a sale that
+     * ever changes after it is written, and it is sync bookkeeping, not
+     * history: nothing the shopkeeper recorded is touched (D019).
+     */
+    @Query("UPDATE sale SET serverReceivedAt = :at WHERE id = :id AND serverReceivedAt IS NULL")
+    suspend fun markServerReceived(
+        id: String,
+        at: Instant,
+    )
+
     /**
      * Really removes a sale and (through the foreign key) its lines. Only for
      * rows that must leave the device for good — a row a test created. A
@@ -94,8 +120,16 @@ interface SaleDao {
     suspend fun hardDelete(id: String)
 }
 
-/** A sale and how many lines it had, for a history row that does not open it. */
+/** A sale, how many lines it had, and whether it has since been reversed — one history row. */
 data class SaleSummary(
     @Embedded val sale: SaleEntity,
     val lineCount: Int,
+    val reversed: Boolean,
+)
+
+/** A sale line with its product's name and unit, null if the product is gone. */
+data class SaleItemWithProduct(
+    @Embedded val item: SaleItemEntity,
+    val productName: String?,
+    val productUnit: String?,
 )

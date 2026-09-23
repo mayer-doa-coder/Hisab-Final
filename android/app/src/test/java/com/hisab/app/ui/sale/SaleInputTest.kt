@@ -36,10 +36,25 @@ class SaleInputTest {
     }
 
     @Test
+    fun `a due date typed as 8 plain digits is read the same way`() {
+        // The field's keyboard is a numeric keypad, which has no "-" key on
+        // stock Android/Samsung keyboards — this is the format it can
+        // actually produce.
+        assertEquals(DueDate.On(LocalDate.of(2026, 10, 15)), parseDueDate("20261015"))
+    }
+
+    @Test
+    fun `8 plain digits typed in Bangla are read the same way`() {
+        assertEquals(DueDate.On(LocalDate.of(2026, 10, 15)), parseDueDate("২০২৬১০১৫"))
+    }
+
+    @Test
     fun `a date that is not a date is refused, not guessed at`() {
         assertEquals(DueDate.Invalid, parseDueDate("15-10-2026"))
         assertEquals(DueDate.Invalid, parseDueDate("tomorrow"))
         assertEquals(DueDate.Invalid, parseDueDate("2026-13-01"))
+        assertEquals(DueDate.Invalid, parseDueDate("20261301"))
+        assertEquals(DueDate.Invalid, parseDueDate("2026101"))
     }
 
     @Test

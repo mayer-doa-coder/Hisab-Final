@@ -147,7 +147,7 @@ export async function updateProduct(
          active = $9,
          revision = revision + 1,
          updated_at = now(),
-         change_seq = nextval('product_change_seq')
+         change_seq = nextval('change_seq')
      WHERE shop_id = $1 AND id = $2 AND revision = $3 AND deleted_at IS NULL
      RETURNING *`,
     [
@@ -186,7 +186,7 @@ export async function deleteProduct(
      SET deleted_at = now(),
          revision = revision + 1,
          updated_at = now(),
-         change_seq = nextval('product_change_seq')
+         change_seq = nextval('change_seq')
      WHERE shop_id = $1 AND id = $2 AND revision = $3 AND deleted_at IS NULL
      RETURNING *`,
     [shopId, id, baseRevision],
@@ -210,8 +210,8 @@ export async function deleteProduct(
 export async function changedProducts(
   shopId: string,
   afterCursor: number,
-  limit = 500,
-): Promise<{ products: Product[]; cursor: number }> {
+  limit: number,
+): Promise<Array<{ product: Product; seq: number }>> {
   const { rows } = await getPool().query<ProductRow>(
     `SELECT * FROM product
      WHERE shop_id = $1 AND change_seq > $2
@@ -220,9 +220,7 @@ export async function changedProducts(
     [shopId, afterCursor, limit],
   )
 
-  const last = rows[rows.length - 1]
-  return {
-    products: rows.map(toProduct),
-    cursor: last === undefined ? afterCursor : Number(last.change_seq),
-  }
+  // Each row's own change number, so a pull can merge products with the
+  // other tables that share the same counter (migration 004).
+  return rows.map((row) => ({ product: toProduct(row), seq: Number(row.change_seq) }))
 }

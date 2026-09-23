@@ -3,6 +3,7 @@ package com.hisab.app.data.customer
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.Query
+import androidx.room.Upsert
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -44,6 +45,10 @@ interface CustomerDao {
         shopId: String,
         query: String,
     ): Flow<List<CustomerEntity>>
+
+    /** Saving what the server sent: the row may or may not be here yet (Step 47). */
+    @Upsert
+    suspend fun upsert(customer: CustomerEntity)
 
     /** Really removes the row. Only for rows a test created. */
     @Query("DELETE FROM customer WHERE id = :id")

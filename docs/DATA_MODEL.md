@@ -103,6 +103,15 @@ Current baki for a customer = sum of all their BakiEntry.amount_delta values.
 - device_id
 - last_server_cursor
 
+## Where the Server Differs From the Phone
+The tables above are the shared shape. The Postgres side (`server/migrations/004_sales_stock_baki.sql`) adds three things the phone does not need, and it is deliberate that they stay server-only (D023, D026):
+
+- **`shop_id` on every row**, including SaleItem, StockMovement and BakiEntry. A phone holds one shop, so it does not need the column; the server holds many, and every query is scoped by the shop in the session token (D015).
+- **`sale_id` on StockMovement and BakiEntry.** The phone keeps that link in `source_reference`/`reference`; the server needs a real column so a pull can send a sale and everything it caused as one change, never half of one (D021, D038).
+- **`change_seq` on Product, Customer, Sale and stand-alone StockMovement**, all from one shared sequence, which is what a pull's single cursor counts through (D039).
+
+`server_received_at` is filled in by the server when a row arrives; `occurred_at` is always what the device said (D019).
+
 ## Rules
 - Stock and baki are never stored as a single editable number. They are always calculated by adding up the ledger entries above. See `../DECISIONS.md` D001, D002, D020.
 - Reversing a credit sale must atomically reverse the Sale, its StockMovement(s), and its BakiEntry together. See `../DECISIONS.md` D021.

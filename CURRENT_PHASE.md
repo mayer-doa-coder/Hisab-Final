@@ -1,8 +1,8 @@
 # Current Phase
 
-M2 — Sale and Stock (Steps 35–47)
+M2 — Sale and Stock (Steps 35–47) — **complete**
 
-Steps 35–42 are built. M0 (Steps 1–22) is finished and verified locally; its one remaining check needs a push: CI green on GitHub. M1 (Steps 23–34) is built, with two checks still owed — listed under "Owed from M1" below.
+Every step of M2 is built and checked. M3 (Customer, Baki, Payment — Steps 48–61) is next. M0 (Steps 1–22) is finished and verified locally; its one remaining check needs a push: CI green on GitHub. M1 (Steps 23–34) is built, with two checks still owed — listed under "Owed from M1" below.
 
 `docs/PHASE_GUIDE.md` has the exact steps, in order, each with its own check. This file just tracks which step you're on — the step list itself lives in one place only, so don't copy it here.
 
@@ -10,7 +10,15 @@ Steps 35–42 are built. M0 (Steps 1–22) is finished and verified locally; its
 Build Sale and Stock end to end — the rules first, then the local tables, then the screens and the backend — as ledgers that are only ever added to, never edited.
 
 ## Current Step
-Steps 35–42 are built. Step 43 (transaction reversal and correction) is next.
+M2 is finished. Steps 43–47, the last of it:
+
+- **Step 43 — reversal.** A sale opens from the history and can be undone; the undo is a second, opposite sale, never an edit (D033). Stock comes back, the list marks the original reversed, and a sale cannot be undone twice.
+- **Step 44 — the credit-sale rule.** The reversal's sale, stock and baki are written in one transaction with the "already undone?" check. A test makes the last write fail on purpose and confirms nothing at all was kept — there is no way to end up with stock restored and baki still owed.
+- **Step 45 — Postgres.** Migration 004 adds sale, sale_item, stock_movement, customer and baki_entry. Checked on a brand-new empty database, run twice to confirm it does nothing the second time, and on the existing development and test databases.
+- **Step 46 — endpoints.** Sales, reversal and stock, all shop-scoped. Proved by breaking it: with the cross-shop customer check removed, the test that one shop cannot put baki on another shop's customer fails; restored, it passes.
+- **Step 47 — sync.** All four workflows run end to end on the phone against the real server and Postgres, with the stock ledger compared on both sides after each.
+
+**Checked, all of it:** 146 on-phone tests (Galaxy A15, server running over `adb reverse`), 125 Android unit tests, 217 server tests, 0 failures anywhere; lint, Spotless, ESLint and Prettier clean; the Room schema and JUnit-signature checks pass.
 
 **Device suite: 102 tests, 0 failures, 0 errors, 0 skipped** on the Galaxy A15 (2026-09-17), including the checks Steps 39–42 name (`SaleFlowTest`, `StockFlowTest`, `HistoryOrderTest`) and every migration from version 1 to 4 run against real rows (`ProductMigrationTest`, `SaleStockMigrationTest`). The first run reported 93: `SaleFlowTest`'s setup returned a value, so JUnit skipped the whole class. Fixed, and now caught in CI by `scripts/check-junit-methods.sh`.
 
@@ -128,18 +136,22 @@ Done so far:
   - **CI now builds the real APK** (`assembleDebug`) and compiles the on-phone tests, instead of only compiling Kotlin.
 
 ## Allowed Right Now
-Anything in M2 (Steps 35–47 of `docs/PHASE_GUIDE.md`) — reversal and correction, the Postgres tables, and the sale and stock endpoints. Finishing the two M1 checks above also stays in scope.
+M3 (Steps 48–61 of `docs/PHASE_GUIDE.md`) — the baki functions, the Customer and BakiEntry work that M2 did not need, and the customer, balance, add-baki and receive-payment screens. Finishing the two M1 checks above also stays in scope.
 
 ## Not Allowed Right Now
-- Customer and Baki screens, and the baki functions (`addCredit`, `receivePayment`, `calculateBalance`, `isOverdue`) — M3, Steps 48–61. The `customer` and `baki_entry` tables exist because a credit sale cannot create its entry without them (D035); nothing else of M3 does.
 - Ask Hisab, forecasting, suggestions — M5/M6.
+- Background sync, retries and multi-device convergence — M4. What exists now is a sync a person asks for.
 - Full security hardening (rate limiting, token rotation, threat testing) — still M7.
 
 ## Definition of Done for M2
-Every check in Steps 35–47 passes — see `docs/PHASE_GUIDE.md` for each one individually.
+Every check in Steps 35–47 passes — see `docs/PHASE_GUIDE.md` for each one individually. Done.
 
 ## Next
-Step 43 (reversal and correction), then the credit-sale reversal rule specifically (44), and the backend half: the Postgres tables (45), the endpoints (46) and the four end-to-end workflows (47). Sale and stock sync queueing goes in at 46–47, in `SaleRepository.record` and `StockRepository.restock` (D036).
+M3, starting at Step 48 (the baki functions: `addCredit`, `receivePayment`, `calculateBalance`, `isOverdue`). Much of the ground is already laid: `customer` and `baki_entry` exist on both sides and already sync, because a credit sale could not create its entry without them (D035).
+
+Two things M2 leaves for later, on purpose:
+- **Two devices reversing the same sale while offline.** The server refuses the second one (`ALREADY_REVERSED`), so the shops agree; the phone whose reversal was refused keeps its own copy until M4's conflict work (Steps 71–72) decides what a device does with a refused change.
+- **The older Product and sync routes still check the login after validating the body**, so an unauthenticated caller with a malformed body gets 400 rather than 401. The new sale and stock routes check first. Tidying the older ones belongs with M7's security pass (Step 96).
 
 ## Update This File
 Move "Current Step" forward as each step is checked off. Update the M-number at the top once a milestone finishes. This file always answers "what step am I on, right now" — the how lives in `docs/PHASE_GUIDE.md`.
