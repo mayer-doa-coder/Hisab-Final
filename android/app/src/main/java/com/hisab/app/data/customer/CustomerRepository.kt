@@ -13,8 +13,8 @@ import java.time.Clock
 /**
  * Just enough of Customer for a credit sale to name who owes the money
  * (Step 40), and for that customer to reach the server (Step 47). The customer
- * screens, editing, and the baki ledger are M3 (Steps 50–55) and are
- * deliberately not here.
+ * screens, editing, and the baki screens are M3 (Steps 52–55) and are not
+ * here yet.
  */
 class CustomerRepository(
     private val database: HisabDatabase,

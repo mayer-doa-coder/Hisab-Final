@@ -426,3 +426,22 @@ Rejected: an "edit stock" field. Rejected: undoing a restock from the history li
 Reason: stock is the sum of its movements and nothing else (D002, D020), so there is no number to edit — the shelf count is how a wrong ledger is put right, and it leaves a record saying the shelf was checked and by how much it was out. A restock typed wrongly is corrected the same way: count the shelf. Undoing a restock as a separate kind of reversal would need its own "which movement does this undo" link on every row, to solve a problem the count already solves.
 
 This also makes every movement type the PRD requires (section 9) reachable from a screen: restock, sale, return, damage and correction — the return being what a reversal writes when stock comes back (D033).
+
+---
+
+## D041 — How Baki Entries Are Typed, Undone, and Judged Overdue
+Decision, in four parts.
+
+**Five entry types.** `credit_sale` and `reversal` already existed and belong to sales. Step 48 adds `credit` (baki added by hand), `payment` (the customer paying back) and `entry_reversal` (undoing a `credit` or `payment`). A new reversal type was added rather than reusing `reversal`, so that "every `reversal` references a sale" stays true and the server's own check (`sale` events may carry only `credit_sale` or `reversal`) does not have to learn a second meaning.
+
+**`reference` is never free text.** It is a sale id, an original entry's id, or null. A hand-written credit or payment carries no note. Rejected: a free-text note in `reference`, as stock movements have. The review of M2 found that the phone identifies "which rows belong to this sale" by filtering `reference`, and a note that happened to equal an id would silently attach a row to the wrong sale. Keeping the field structural for baki means that weakness does not grow. If notes are ever wanted they need their own column.
+
+**What can be undone.** `reverseEntry` undoes only a `credit` or a `payment`, by writing the opposite entry. It refuses a `credit_sale` entry, because that one is undone together with its sale and stock by `reverseSale` — reversing the baki alone would leave the customer clear while the goods stay gone, the partial state D021 forbids. It refuses a reversal, because undoing an undo leaves the history unreadable (the same rule as D033). Whether an entry was *already* undone is a question about stored rows, answered in Step 57, never a flag on the original.
+
+**A payment larger than what is owed is recorded.** The balance goes negative, meaning the shop holds the customer's money in advance. Rejected: refusing the payment. The money is in the shopkeeper's hand whether or not the ledger agrees, so refusing would only make the ledger wrong about the real world — the reasoning of D031 for stock. A screen may warn; it never blocks.
+
+**Overdue.** A due date belongs to one credit, so overdue cannot be read off the balance. `overdueAmount` cancels each undone credit with its reversal, spreads all payments over the remaining credits oldest-first (by when each was recorded, ties broken by id so every phone agrees), and counts what is still unpaid on a credit whose due date is before *today*. Due today is not yet overdue; a credit with no due date is never overdue; a customer who has paid everything, or more, has nothing overdue. `today` is passed in, never read from the clock, because it is the shop's day (D019) and because a rule that reads the clock cannot be tested. Rejected: earliest-*due*-first settlement — it makes a payment clear the debt that happens to be due soonest rather than the one that is oldest, which is not how a shopkeeper thinks of "he paid me for the first lot".
+
+Kotlin and TypeScript both implement all of this, and `fixtures/m3_baki.tsv` is read by both suites (as D034 does for sales), so neither can drift. Writing that fixture found a real difference between the languages: JavaScript's `Date.parse` turns 2026-02-30 into March 2 where Kotlin refuses it, so the server twin round-trips a date and requires it to come back unchanged.
+
+Not done here, on purpose: the Postgres `baki_entry_type_known` check still allows only the first two types, because nothing writes the other three yet. The migration that widens it belongs with the baki endpoints (Step 58).

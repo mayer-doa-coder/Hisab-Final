@@ -14,12 +14,11 @@ import java.time.LocalDate
 /**
  * One line of a customer's credit ledger. Fields follow `docs/DATA_MODEL.md`.
  *
- * Why this table exists in M2 rather than M3, where the baki *screens* and
- * ledger functions live (Steps 48–55): Step 40 requires a credit sale to
- * create its entry correctly, and an entry that is not stored has not been
- * created. What is here is only what a credit sale writes. `addCredit`,
- * `receivePayment`, `calculateBalance` and `isOverdue` are M3 and are
- * deliberately absent.
+ * The table came in M2, because a credit sale has to store its entry (Step 40,
+ * D035). The rules that build and read entries are in `domain/Baki.kt`
+ * (Step 48); the tests that prove an entry survives the round trip through
+ * this table are `BakiEntryDaoTest` (Step 51). The entry types are stored by
+ * name in [entryType] — a new type needs no schema change.
  *
  * Like Sale and StockMovement this is a ledger entity: no `revision`, no
  * `deletedAt`, never edited in place. A customer's balance is always the sum

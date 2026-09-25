@@ -9,8 +9,9 @@ import java.time.Instant
  * Writing and reading baki entries. There is no update and no delete: a
  * confirmed entry is never rewritten, only answered with an opposite one.
  *
- * Only what a credit sale needs is here. The rest of the ledger — payments,
- * overdue, the balance screen — is M3 (Steps 48–55).
+ * Reading is deliberately plain: a customer's balance is a `SUM` over their
+ * rows (D001), and the rules that need more — overdue, what an entry undoes —
+ * are in `domain/Baki.kt`, applied to the rows `forCustomer` returns.
  */
 @Dao
 interface BakiEntryDao {

@@ -9,20 +9,32 @@ import java.time.LocalDate
  * entries (D001, PRD section 10). Like a stock movement, an entry is never
  * changed once written; a mistake is undone by writing an opposite entry.
  *
- * Only the shape lives here for now, plus the entries a credit sale and its
- * reversal produce (`Sale.kt`). The baki functions themselves — `addCredit`,
- * `receivePayment`, `calculateBalance`, `isOverdue` — and the table are M3
- * (docs/PHASE_GUIDE.md Steps 48–51). A credit sale still has to create its
- * entry correctly here, though: reversing a credit sale must undo the sale,
- * the stock and the baki together, and it cannot do that if the entry only
- * appears a milestone later (D021, Step 40).
+ * This file is the shape. The rules that build and read entries are in
+ * `Baki.kt` (`addCredit`, `receivePayment`, `reverseEntry`, `calculateBalance`,
+ * `isOverdue`), except the two entries a credit sale and its reversal write,
+ * which come from `Sale.kt` so the sale, its stock and its baki are always made
+ * together (D021).
+ *
+ * `reference` is never free text. It names the thing an entry is about — the
+ * sale for a credit sale and its reversal, the original entry for an
+ * [ENTRY_REVERSAL] — or is null. That keeps "which entries belong to this
+ * sale" a question about ids, not about what someone typed (D041).
  */
 enum class BakiEntryType {
-    /** The customer took goods on credit. Increases what is owed. */
+    /** The customer took goods on credit. Increases what is owed. Written only by a credit sale. */
     CREDIT_SALE,
 
-    /** A credit sale was undone. Decreases what is owed by exactly what it added. */
+    /** A credit sale was undone. Decreases what is owed by exactly what it added. Written only by [reverseSale]. */
     REVERSAL,
+
+    /** Baki added by hand, with no sale behind it. Increases what is owed. */
+    CREDIT,
+
+    /** The customer paid something back. Decreases what is owed. */
+    PAYMENT,
+
+    /** A [CREDIT] or [PAYMENT] entered by mistake was undone. Exactly cancels the entry it references. */
+    ENTRY_REVERSAL,
 }
 
 data class BakiEntry(
@@ -31,7 +43,7 @@ data class BakiEntry(
     /** Signed: positive is more owed, negative is less owed. */
     val amountDelta: Money,
     val type: BakiEntryType,
-    /** What caused this — the sale id, for both a credit sale and its reversal. */
+    /** The sale id (credit sale, sale reversal), the original entry id (entry reversal), or null. Never free text. */
     val reference: String?,
     /** Optional: when the shopkeeper expects to be paid back (PRD section 10). */
     val dueDate: LocalDate?,

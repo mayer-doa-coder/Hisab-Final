@@ -1,16 +1,38 @@
 # Current Phase
 
-M2 — Sale and Stock (Steps 35–47) — **complete**
+M3 — Customer, Baki, Payment (Steps 48–61) — **in progress: Steps 48–51 built, Step 52 next**
 
-Every step of M2 is built and checked. M3 (Customer, Baki, Payment — Steps 48–61) is next. M0 (Steps 1–22) is finished and verified locally; its one remaining check needs a push: CI green on GitHub. M1 (Steps 23–34) is built, with two checks still owed — listed under "Owed from M1" below.
+M2 (Steps 35–47) is complete. M0 (Steps 1–22) is finished and verified locally; its one remaining check needs a push: CI green on GitHub. M1 (Steps 23–34) is built, with two checks still owed — listed under "Owed from M1" below.
 
 `docs/PHASE_GUIDE.md` has the exact steps, in order, each with its own check. This file just tracks which step you're on — the step list itself lives in one place only, so don't copy it here.
 
 ## Objective
-Build Sale and Stock end to end — the rules first, then the local tables, then the screens and the backend — as ledgers that are only ever added to, never edited.
+Build the customer and baki side end to end — the ledger rules first, then the tables, then the screens and the backend — as a ledger that is only ever added to: what a customer owes is the sum of their entries and never a number anyone edits.
 
 ## Current Step
-M2 is finished. Steps 43–47, the last of it:
+**Steps 48–51 are built and their checks have passed. Step 52 (the Customer List screen) is next.** Status of each step's own check:
+
+- **Step 48 — the baki functions. Check passed.** `domain/Baki.kt`: `addCredit`, `receivePayment`, `reverseEntry`, `calculateBalance`, `isOverdue` (and `overdueAmount`, which it is defined by). 23 unit tests, 0 failures. Decisions and what was rejected: D041.
+- **Step 49 — the same cases on the backend. Check passed.** `server/src/domain/baki.ts` has the same functions. `fixtures/m3_baki.tsv` (27 cases) is read by both `BakiFixtureTest.kt` and `bakiFixture.test.ts`; the plan's own example, credit 500, payment 200, credit 100, gives 400 on both. **Proved by breaking it:** a changed fixture number failed both suites on that case, and a wrong settlement order (earliest-due instead of earliest-recorded) failed both suites on exactly the case written for it; restored, both pass. 55 new server tests, 0 failures.
+- **Step 50 — the Customer table in Room. Check passed on the phone (2026-09-25).** The table has existed since M2 (D035) with `revision`, `updatedAt` and `deletedAt`, so no schema change and the database is still version 4. `CustomerDaoTest`: 13 of 13 passed on the Galaxy A15.
+- **Step 51 — the BakiEntry table in Room. Check passed on the phone (2026-09-25).** `BakiEntryDaoTest`: 16 of 16 passed. It covers all five entry types round-tripping through the table, the sum query agreeing with `calculateBalance`, and that neither table has a balance column.
+
+**Checked on this tree (2026-09-25), all from result files rather than "BUILD SUCCESSFUL":**
+- `ci-local.sh`, run in full, all 13 steps pass: 154 Android unit tests and 272 server tests, 0 failures; Android lint "No issues found"; Spotless, ESLint, Prettier, the Room schema and JUnit-signature checks.
+- **On-phone suite (Galaxy A15, Android 16): 175 tests, 0 failed, 0 skipped**, across 23 classes, with the dev server and `adb reverse tcp:3000 tcp:3000` up. That includes the 29 new Room tests, and the 11 end-to-end sync tests against the real server and Postgres, so the new entry types did not break sync.
+
+**Two traps hit while running that suite, worth knowing:**
+- The device run reported `BUILD SUCCESSFUL` three times while running **zero** tests. Cause: the Gradle test engine starts its own `adb`, which failed on port 5037 (a VS Code Java process had taken it, then a second adb server took the phone). Fix: one adb server on the default port, a fresh Gradle daemon (`./gradlew --stop`). Only the result XML shows the truth.
+- When the dev server is not running, the end-to-end sync tests do not fail cleanly: they report `AssumptionViolatedException: needs the development server` and the XML records them as failures. They were not run, so they prove nothing until `npm start` and `adb reverse` are up.
+
+**The suite uninstalls the app and wipes its data when it finishes.** The app was reinstalled with `installDebug`, empty. Signing in on the Sync screen and syncing pulls the shop's data back from the server.
+
+**Not done here, on purpose:** the Postgres `baki_entry_type_known` check still allows only `credit_sale` and `reversal`. Nothing writes the other three types yet (no screen exists), so nothing can fail. The migration that widens it belongs with Step 58, and must land before Step 54 can sync a hand-written credit.
+
+**Known gap, not part of M3's steps:** two phones that are both offline can each create a customer with the same name, and the server accepts both, splitting that person's baki across two rows. Merging on the server is not safe by itself: `sale.customer_id` and `baki_entry.customer_id` are foreign keys, so a phone whose customer row was merged away would have its credit sale refused for good. A real fix needs the server to tell the phone which customer won and the phone to rewrite its own rows. This is D035's known limit reaching the sync path. The owner chose on 2026-09-23 to leave it for M3, where customers get phone numbers and a picker (D035), and it overlaps the two-device work in M4 (Steps 71–72).
+
+## M2 — how it finished
+Steps 43–47, the last of M2:
 
 - **Step 43 — reversal.** A sale opens from the history and can be undone; the undo is a second, opposite sale, never an edit (D033). Stock comes back, the list marks the original reversed, and a sale cannot be undone twice.
 - **Step 44 — the credit-sale rule.** The reversal's sale, stock and baki are written in one transaction with the "already undone?" check. A test makes the last write fail on purpose and confirms nothing at all was kept — there is no way to end up with stock restored and baki still owed.
@@ -24,11 +46,10 @@ M2 is finished. Steps 43–47, the last of it:
 
 **Screens checked by hand** on the phone, in airplane mode, through the whole walkthrough (stock, cash sale, cart and quantities, baki sale with the stock warning, history, language switch). Two New Sale bugs found while writing the walkthrough were fixed first (the cart summary's corner said "Total" instead of saying it opens the cart; a sale confirmed with the cart open left the next sale stuck on the cart).
 
-**Still owed:** the stored rows behind that walkthrough were not looked at — the phone had no Android Studio, and the device test run then uninstalled the app. `bash scripts/phone-db.sh` now shows them without Android Studio: re-enter a cash sale and a baki sale, run it, and compare against the walkthrough's numbers. Also still to answer: whether the due-date keypad on the phone has a "-" key.
-
-One repository chore before the next push: `android/app/schemas/com.hisab.app.data.HisabDatabase/4.json` is new and untracked, so `scripts/check-room-schema.sh` fails until it is committed. That is the check doing its job, not a defect.
-
-**Before any push:** `bash scripts/ci-local.sh` runs every CI check in CI's order. Last run on this tree (2026-09-17): everything passes — 125 Android unit tests, 142 server tests, lint and format clean — except the Room schema step, and only because `4.json` is not committed yet.
+**Owed items from M2, now closed (2026-09-23):**
+- The stored rows were looked at with `bash scripts/phone-db.sh`. A credit sale entered fresh that day (0.5 kg Rice to Karim, ৳25.00, due 2026-10-15) was stored as entered: the sale, a -0.5 stock movement, and a baki entry equal to the sale total. It was then synced through the app, and the same sale, baki entry (with the due date) and Karim's ৳25.00 balance were found in Postgres, with stock totals per product equal on both sides. The cash-sale and reversal rows on the phone are still the ones from 2026-09-17; only the credit sale was re-entered.
+- The due-date keypad question is answered: the Samsung number pad on the Galaxy A15 **does** have a "-" key, so the hyphenated date could be typed there. A plain number pad (Gboard's, for one) has none, so the field now also accepts 8 plain digits (`20261015`) and its hint shows that form. Verified on the phone.
+- `4.json` (the Room schema for version 4) is committed; the chore that was listed here is done.
 
 ### Owed from M1
 1. **Step 28** — add, edit and search on the phone with airplane mode on. Nothing in the local path touches the network, but the check is a real run, not an argument.
@@ -136,7 +157,7 @@ Done so far:
   - **CI now builds the real APK** (`assembleDebug`) and compiles the on-phone tests, instead of only compiling Kotlin.
 
 ## Allowed Right Now
-M3 (Steps 48–61 of `docs/PHASE_GUIDE.md`) — the baki functions, the Customer and BakiEntry work that M2 did not need, and the customer, balance, add-baki and receive-payment screens. Finishing the two M1 checks above also stays in scope.
+M3 (Steps 48–61 of `docs/PHASE_GUIDE.md`) — Steps 48–51 are built (above); what remains is the customer, balance, add-baki and receive-payment screens, the Postgres and endpoint work (Step 58), and the UX, bilingual and font passes (Steps 59–61). Finishing the two M1 checks above also stays in scope.
 
 ## Not Allowed Right Now
 - Ask Hisab, forecasting, suggestions — M5/M6.
@@ -147,7 +168,8 @@ M3 (Steps 48–61 of `docs/PHASE_GUIDE.md`) — the baki functions, the Customer
 Every check in Steps 35–47 passes — see `docs/PHASE_GUIDE.md` for each one individually. Done.
 
 ## Next
-M3, starting at Step 48 (the baki functions: `addCredit`, `receivePayment`, `calculateBalance`, `isOverdue`). Much of the ground is already laid: `customer` and `baki_entry` exist on both sides and already sync, because a credit sale could not create its entry without them (D035).
+1. **Step 52 — the Customer List screen.** Shows customers offline. `CustomerDao.observe` and `balancePoisha` already exist; the screen needs each customer's balance, which is `calculateBalance` over their entries or the `SUM` query — never a stored number.
+2. Then Steps 53–57 (details, add baki, receive payment, the 400 fixture on the real screens, a reversal), which use `Baki.kt` as it is. Step 58 needs the Postgres check widened first (see above).
 
 Two things M2 leaves for later, on purpose:
 - **Two devices reversing the same sale while offline.** The server refuses the second one (`ALREADY_REVERSED`), so the shops agree; the phone whose reversal was refused keeps its own copy until M4's conflict work (Steps 71–72) decides what a device does with a refused change.

@@ -1,0 +1,61 @@
+# Shared Baki fixtures — docs/PHASE_GUIDE.md Step 49.
+#
+# Android is Kotlin and the backend is TypeScript, so the code is not shared.
+# This file is. Both sides read THIS file and must produce the same numbers:
+#   android/app/src/test/java/com/hisab/app/domain/BakiFixtureTest.kt
+#   server/src/domain/bakiFixture.test.ts
+# A case added here is run by both automatically — neither side can quietly
+# drift, and neither can pass by keeping its own private copy of the numbers.
+#
+# Format: tab-separated. Blank lines and lines starting with # are ignored.
+#   field 0  kind
+#   field 1  label (what the case is about, in words)
+#   field 2  input: a ledger written as ";"-separated tokens ("-" = no entries)
+#   field 3  expected value
+#
+# Money is integer poisha (CLAUDE.md, D019): 1 BDT = 100 poisha, so 500 taka is 50000.
+#
+# Tokens. Each token is one thing that happened; the Nth token happened N
+# minutes after the first, so the order in the line is the order in time.
+# Positions are 0-based, and an undone entry is named by the position of the
+# token that made it.
+#   credit:AMOUNT[@DUE]   addCredit            baki added by hand, optional due date yyyy-MM-dd
+#   payment:AMOUNT        receivePayment       the customer paid this much back
+#   sale:AMOUNT[@DUE]     completeCreditSale   one line, so the sale total and the baki are both AMOUNT
+#   undo:N                reverseEntry         undo the credit/payment made by token N
+#   unsale:N              reverseSale          undo the credit sale made by token N; its baki reversal is the entry
+#
+# Kinds.
+#   baki_balance   input -> the balance (calculateBalance), which may be negative
+#   baki_overdue   "TODAY|tokens" -> the amount past its due date (overdueAmount)
+#   baki_refused   tokens whose LAST token must be refused -> the word "refused"
+
+baki_balance	the Step 49 example: credit 500, payment 200, credit 100 -> balance 400	credit:50000;payment:20000;credit:10000	40000
+baki_balance	a customer with no entries owes nothing	-	0
+baki_balance	a payment larger than what is owed is recorded and the balance goes negative	credit:10000;payment:15000	-5000
+baki_balance	undoing a mistaken credit brings the balance back to zero	credit:50000;undo:0	0
+baki_balance	undoing a mistaken payment restores the debt	credit:50000;payment:20000;undo:1	50000
+baki_balance	a credit sale adds what it totalled	sale:30000	30000
+baki_balance	undoing a credit sale clears exactly what it added	sale:30000;unsale:0	0
+baki_balance	a sale, a payment and a hand-written credit add up	sale:30000;payment:10000;credit:5000	25000
+baki_balance	every kind of entry together	credit:10000;sale:20000;payment:5000;undo:2;unsale:1	10000
+
+baki_overdue	a credit with no due date is never overdue	2026-09-15|credit:50000	0
+baki_overdue	unpaid and due yesterday is overdue	2026-09-15|credit:50000@2026-09-14	50000
+baki_overdue	due today is not yet overdue	2026-09-15|credit:50000@2026-09-15	0
+baki_overdue	due tomorrow is not overdue	2026-09-15|credit:50000@2026-09-16	0
+baki_overdue	a part payment shrinks what is overdue	2026-09-15|credit:50000@2026-09-01;payment:20000	30000
+baki_overdue	paying it all leaves nothing overdue	2026-09-15|credit:50000@2026-09-01;payment:50000	0
+baki_overdue	paying more than owed leaves nothing overdue	2026-09-15|credit:50000@2026-09-01;payment:60000	0
+baki_overdue	a payment settles the oldest debt first, and that one was overdue	2026-09-15|credit:30000@2026-09-01;credit:20000@2026-09-30;payment:30000	0
+baki_overdue	oldest means earliest recorded, not earliest due: the overdue one is paid last	2026-09-15|credit:20000@2026-09-30;credit:30000@2026-09-01;payment:30000	20000
+baki_overdue	an undone credit is not owed, so it is not overdue	2026-09-15|credit:50000@2026-09-01;undo:0	0
+baki_overdue	an undone credit sale is not owed, so it is not overdue	2026-09-15|sale:50000@2026-09-01;unsale:0	0
+baki_overdue	undoing a payment puts the overdue debt back	2026-09-15|credit:50000@2026-09-01;payment:50000;undo:1	50000
+baki_overdue	a credit sale past its due date is overdue	2026-09-15|sale:40000@2026-09-10	40000
+baki_overdue	two overdue credits add up, one hand-written and one from a sale	2026-09-15|credit:10000@2026-08-01;sale:20000@2026-09-01	30000
+baki_overdue	a customer with no entries has nothing overdue	2026-09-15|-	0
+
+baki_refused	a credit sale entry cannot be undone alone; it goes with its sale and stock	sale:50000;undo:0	refused
+baki_refused	an entry reversal cannot itself be reversed	credit:50000;undo:0;undo:1	refused
+baki_refused	the baki reversal a sale reversal writes cannot be reversed either	sale:50000;unsale:0;undo:1	refused

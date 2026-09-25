@@ -88,6 +88,18 @@ A sale is never refused because this sum is too low, so it can go negative — t
 
 Current baki for a customer = sum of all their BakiEntry.amount_delta values.
 
+`type` is one of five, stored as a language-neutral name (`../DECISIONS.md` D011, D041):
+
+| type | amount_delta | written by | reference |
+| --- | --- | --- | --- |
+| `credit_sale` | positive | a credit sale (`completeCreditSale`) | the sale id |
+| `reversal` | negative | undoing a credit sale (`reverseSale`) | the sale id |
+| `credit` | positive | baki added by hand (`addCredit`) | null |
+| `payment` | negative | the customer paying back (`receivePayment`) | null |
+| `entry_reversal` | opposite of what it undoes | undoing a `credit` or `payment` (`reverseEntry`) | the original entry's id |
+
+`reference` is never free text: it is a sale id, an entry id, or null. A credit sale's entry is undone only together with its sale and stock, never on its own (`../DECISIONS.md` D021), and a reversal is never itself reversed.
+
 ## SyncOutbox
 - event_id (unique, never reused)
 - entity_type

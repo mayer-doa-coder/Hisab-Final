@@ -11,12 +11,10 @@ import java.time.Instant
  * `updatedAt` and `deletedAt` for conflict detection and tombstoned deletes
  * (D017).
  *
- * Why this table exists in M2 rather than M3, where the Customer *screens*
- * live (Step 50): Step 40 says a credit sale "saves the sale, reduces stock,
- * and creates a baki entry", and that entry cannot name who owes the money
- * without a customer to point at. So the table and a name lookup exist now,
- * and nothing else does — no customer list, no details screen, no editing.
- * Those are M3 and are deliberately absent.
+ * The table came in M2, because a credit sale's baki entry cannot name who
+ * owes the money without a customer to point at (Step 40, D035). Step 50's
+ * insert-and-read check is `CustomerDaoTest`. The customer *screens* — list,
+ * details, editing — are Steps 52 onward and are not here yet.
  *
  * Current baki is not a field here, and never will be: it is always the sum
  * of that customer's BakiEntry rows (D001).
