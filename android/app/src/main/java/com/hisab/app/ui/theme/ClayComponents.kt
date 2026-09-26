@@ -30,6 +30,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
@@ -40,6 +42,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.hisab.app.ui.ScriptAwareVisualTransformation
@@ -91,10 +94,12 @@ fun ClayText(
     size: Int = 15,
     weight: FontWeight = FontWeight.Normal,
     color: Color = ClayColors.Ink,
+    textAlign: TextAlign? = null,
 ) {
     Text(
         text = text,
         modifier = modifier,
+        textAlign = textAlign,
         fontFamily = LocalUiFont.current,
         fontSize = size.sp,
         fontWeight = weight,
@@ -298,6 +303,8 @@ fun ClayTextField(
     password: Boolean = false,
     /** Names the input for UI tests, which otherwise cannot tell four identical-looking fields apart. */
     fieldTag: String? = null,
+    /** Lets a screen put the cursor in this field as it opens, so the keypad is already up. */
+    focusRequester: FocusRequester? = null,
 ) {
     val shape = RoundedCornerShape(ClayDimens.FieldCorner)
     Column(modifier = modifier.fillMaxWidth()) {
@@ -317,6 +324,7 @@ fun ClayTextField(
                 Modifier
                     .fillMaxWidth()
                     .then(if (fieldTag == null) Modifier else Modifier.testTag(fieldTag))
+                    .then(if (focusRequester == null) Modifier else Modifier.focusRequester(focusRequester))
                     .background(ClayColors.SurfaceSunken, shape)
                     .border(
                         BorderStroke(

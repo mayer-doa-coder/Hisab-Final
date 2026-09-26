@@ -48,6 +48,7 @@ fun HomeScreen(
     onOpenSale: () -> Unit,
     onOpenStock: () -> Unit,
     onOpenHistory: () -> Unit,
+    onOpenCustomers: () -> Unit,
     onOpenProducts: () -> Unit,
     onOpenSync: () -> Unit,
 ) {
@@ -87,6 +88,32 @@ fun HomeScreen(
             leadingIcon = painterResource(R.drawable.ic_cart),
             modifier = Modifier.fillMaxWidth(),
         )
+
+        // Checking who owes money and taking a payment happen several times a
+        // day, so this sits straight under selling, ahead of stock and history.
+        ClayCard(modifier = Modifier.padding(top = 14.dp), onClick = onOpenCustomers) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_customers),
+                    contentDescription = null,
+                    tint = ClayColors.Primary,
+                    modifier =
+                        Modifier
+                            .size(46.dp)
+                            .background(ClayColors.PrimarySoft, RoundedCornerShape(16.dp))
+                            .padding(11.dp),
+                )
+                Column(modifier = Modifier.padding(start = 14.dp).weight(1f)) {
+                    ClayText(text = stringResource(R.string.customers_open), size = 16, weight = FontWeight.Bold)
+                    ClayText(
+                        text = stringResource(R.string.customers_open_subtitle),
+                        size = 13,
+                        color = ClayColors.InkMuted,
+                        modifier = Modifier.padding(top = 2.dp),
+                    )
+                }
+            }
+        }
 
         Row(
             modifier = Modifier.fillMaxWidth().padding(top = 14.dp),

@@ -14,6 +14,10 @@ interface CustomerDao {
     @Query("SELECT * FROM customer WHERE id = :id")
     suspend fun byId(id: String): CustomerEntity?
 
+    /** One customer as a live query, so their screen follows an edit or a sync by itself. */
+    @Query("SELECT * FROM customer WHERE id = :id")
+    fun observeById(id: String): Flow<CustomerEntity?>
+
     /**
      * Case-insensitive exact match on the name. This is what stops a shop
      * ending up with three "রহিম"s because a credit sale was recorded on

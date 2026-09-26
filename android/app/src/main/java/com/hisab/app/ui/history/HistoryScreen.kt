@@ -41,6 +41,7 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.time.format.DecimalStyle
 import java.time.format.FormatStyle
 import java.util.Locale
 
@@ -300,14 +301,28 @@ fun whenText(
         DateTimeFormatter
             .ofLocalizedTime(FormatStyle.SHORT)
             .withLocale(locale)
+            .withDecimalStyle(DecimalStyle.of(locale))
             .withZone(zone)
             .format(instant)
 
     val dayText =
         when (date) {
-            today -> todayLabel
-            today.minusDays(1) -> yesterdayLabel
-            else -> DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withLocale(locale).format(date)
+            today -> {
+                todayLabel
+            }
+
+            today.minusDays(1) -> {
+                yesterdayLabel
+            }
+
+            else -> {
+                DateTimeFormatter
+                    .ofLocalizedDate(
+                        FormatStyle.MEDIUM,
+                    ).withLocale(locale)
+                    .withDecimalStyle(DecimalStyle.of(locale))
+                    .format(date)
+            }
         }
 
     return "$dayText · $time"

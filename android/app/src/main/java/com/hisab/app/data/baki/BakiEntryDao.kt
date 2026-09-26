@@ -3,6 +3,7 @@ package com.hisab.app.data.baki
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.Query
+import kotlinx.coroutines.flow.Flow
 import java.time.Instant
 
 /**
@@ -23,6 +24,18 @@ interface BakiEntryDao {
 
     @Query("SELECT * FROM baki_entry WHERE customerId = :customerId ORDER BY occurredAt ASC, id ASC")
     suspend fun forCustomer(customerId: String): List<BakiEntryEntity>
+
+    /**
+     * Every entry, newest first, as a live query: a payment recorded on the
+     * next screen changes what this emits, so a list of balances built from it
+     * updates by itself with nothing to refresh (D001).
+     */
+    @Query("SELECT * FROM baki_entry ORDER BY occurredAt DESC, id DESC")
+    fun observeAll(): Flow<List<BakiEntryEntity>>
+
+    /** One customer's entries, newest first, as a live query — their ledger on screen. */
+    @Query("SELECT * FROM baki_entry WHERE customerId = :customerId ORDER BY occurredAt DESC, id DESC")
+    fun observeForCustomer(customerId: String): Flow<List<BakiEntryEntity>>
 
     /** Everything caused by one sale, so a reversal can be found from the sale it undoes. */
     @Query("SELECT * FROM baki_entry WHERE reference = :reference ORDER BY occurredAt ASC, id ASC")

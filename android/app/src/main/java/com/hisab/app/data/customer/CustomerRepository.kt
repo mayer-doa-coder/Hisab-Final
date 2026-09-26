@@ -10,11 +10,26 @@ import com.hisab.app.domain.generateId
 import kotlinx.coroutines.flow.Flow
 import java.time.Clock
 
+/** What adding a customer by name came to. */
+sealed interface CustomerCreateResult {
+    data class Created(
+        val customer: CustomerEntity,
+    ) : CustomerCreateResult
+
+    /** Someone in this shop already has that name; nothing was written. */
+    data class NameTaken(
+        val existing: CustomerEntity,
+    ) : CustomerCreateResult
+}
+
 /**
- * Just enough of Customer for a credit sale to name who owes the money
- * (Step 40), and for that customer to reach the server (Step 47). The customer
- * screens, editing, and the baki screens are M3 (Steps 52–55) and are not
- * here yet.
+ * Customers: enough for a credit sale to name who owes the money (Step 40), for
+ * a customer to reach the server (Step 47), and for the Customers screens to
+ * list, open and add them (Steps 52–55). Editing and deleting a customer are
+ * not here yet.
+ *
+ * What a customer owes is not read here at all — it is the sum of their baki
+ * entries (`BakiRepository`, D001).
  */
 class CustomerRepository(
     private val database: HisabDatabase,
@@ -50,32 +65,74 @@ class CustomerRepository(
         require(trimmed.isNotEmpty()) { "A customer needs a name." }
 
         return database.withTransaction {
-            customers.byName(shopId, trimmed)?.let { return@withTransaction it }
-
-            val customer =
-                CustomerEntity(
-                    id = generateId().value,
-                    shopId = shopId,
-                    name = trimmed,
-                    phone = null,
-                    revision = FIRST_REVISION,
-                    updatedAt = clock.instant(),
-                    deletedAt = null,
-                )
-            customers.insert(customer)
-            outbox.insert(
-                SyncOutboxEntity(
-                    eventId = generateId().value,
-                    entityType = ENTITY_TYPE_CUSTOMER,
-                    entityId = customer.id,
-                    operation = OPERATION_CREATE,
-                    payload = CustomerSyncPayload.toJson(customer),
-                    baseRevision = null,
-                    clientTimestamp = customer.updatedAt,
-                ),
-            )
-            customer
+            customers.byName(shopId, trimmed) ?: insertNew(trimmed, phone = null)
         }
+    }
+
+    /**
+     * Adds a customer from the Customers screen (Step 52 onward), with an
+     * optional phone number.
+     *
+     * A name that is already taken is *answered*, not merged and not repeated:
+     * the caller is told who already has it, so the screen can say so and offer
+     * that person. The same case-insensitive match as [findOrCreate] decides
+     * "taken", because two rules for "the same customer" would let a credit sale
+     * and this screen disagree about who owes what (D035).
+     *
+     * Like every customer write, it is queued for sync in the same transaction
+     * (D003).
+     */
+    suspend fun create(
+        name: String,
+        phone: String?,
+    ): CustomerCreateResult {
+        val trimmed = name.trim()
+        require(trimmed.isNotEmpty()) { "A customer needs a name." }
+
+        return database.withTransaction {
+            val existing = customers.byName(shopId, trimmed)
+            if (existing != null) {
+                CustomerCreateResult.NameTaken(existing)
+            } else {
+                CustomerCreateResult.Created(insertNew(trimmed, phone?.trim()?.takeIf { it.isNotEmpty() }))
+            }
+        }
+    }
+
+    /** Everyone this shop has recorded, by name, as a live query. */
+    fun observeAll(): Flow<List<CustomerEntity>> = customers.observe(shopId, "")
+
+    /** One customer as a live query; null if they do not exist. */
+    fun observeById(id: EntityId): Flow<CustomerEntity?> = customers.observeById(id.value)
+
+    /** Must run inside a transaction: the row and its sync event are saved together or not at all. */
+    private suspend fun insertNew(
+        name: String,
+        phone: String?,
+    ): CustomerEntity {
+        val customer =
+            CustomerEntity(
+                id = generateId().value,
+                shopId = shopId,
+                name = name,
+                phone = phone,
+                revision = FIRST_REVISION,
+                updatedAt = clock.instant(),
+                deletedAt = null,
+            )
+        customers.insert(customer)
+        outbox.insert(
+            SyncOutboxEntity(
+                eventId = generateId().value,
+                entityType = ENTITY_TYPE_CUSTOMER,
+                entityId = customer.id,
+                operation = OPERATION_CREATE,
+                payload = CustomerSyncPayload.toJson(customer),
+                baseRevision = null,
+                clientTimestamp = customer.updatedAt,
+            ),
+        )
+        return customer
     }
 
     /** Saves a customer the server sent (Step 47). No sync event: sending it back would be an echo. */

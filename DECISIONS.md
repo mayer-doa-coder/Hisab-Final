@@ -445,3 +445,41 @@ Decision, in four parts.
 Kotlin and TypeScript both implement all of this, and `fixtures/m3_baki.tsv` is read by both suites (as D034 does for sales), so neither can drift. Writing that fixture found a real difference between the languages: JavaScript's `Date.parse` turns 2026-02-30 into March 2 where Kotlin refuses it, so the server twin round-trips a date and requires it to come back unchanged.
 
 Not done here, on purpose: the Postgres `baki_entry_type_known` check still allows only the first two types, because nothing writes the other three yet. The migration that widens it belongs with the baki endpoints (Step 58).
+
+---
+
+## D042 — How the Customers and Baki Screens Work
+Decision, in six parts (Steps 52-56).
+
+**Baki entered by hand is kept on the phone and not queued for sync yet.** `BakiRepository.addCredit` and `receivePayment` write the entry and nothing else. The server has no endpoint that accepts a standalone baki entry until Step 58, so a queued event would be refused and left in the outbox for good, and the "waiting to send" count would tell a shopkeeper that work is pending which will never be sent. This is D036's reasoning, applied again. Step 58 adds the queueing in those two methods, and the entries recorded before it are sent then. Rejected: queueing now "so it is not retrofitted later". Adding a customer *is* queued, because the server already accepts a Customer.
+
+**The list is ordered by who most needs a phone call.** Overdue customers first, then the largest baki, then name (ignoring case, then id, so every phone shows the same order). A shopkeeper opens this list to decide whom to ask for money, so the answer should not need sorting. The card above it adds up what is owed, counting only positive balances: one customer's advance does not reduce what another owes. Filters (everyone, owe money, overdue) and a search over name and phone sit above the list. All amounts are worked out from each customer's entries by `calculateBalance` and `overdueAmount` (D001, D041); the screen adds no rule about money of its own.
+
+**One view model serves the customer's screen and both forms.** The balance a form previews ("owes now, will owe after") is therefore the very live number the screen behind it shows, and cannot go stale while the shopkeeper types. Add Baki and Receive Payment are one screen in two modes rather than two copies, so they cannot drift apart. They are full screens, not dialogs: the keypad opens straight away on the amount field and Save stays above it.
+
+**An advance is shown as an amount held, never as a negative "owes".** A customer who has paid ahead reads "Paid in advance ৳1,000.00" in the form's preview, the customer's screen and the list. Overpaying is recorded and the screen says what will happen, but never blocks (D041). This was found on the phone, not in the design: the first version printed "Owes after ৳ -1,000.00", which reads as a mistake, and the explanation sat half-hidden under the keypad. The form now scrolls the note into view.
+
+**Adding a customer whose name is taken is answered, not merged and not repeated.** The dialog says so and offers to open the existing person. The same case-insensitive rule as a credit sale decides "taken" (D035), because two rules for "the same customer" would let the screen and a sale disagree about who owes what. A new customer opens straight away, since Add baki is what comes next.
+
+**Dates and times use the digits of the screen's language, as money already did.** `whenText` and the customer screens now use the language's own decimal style, so a Bangla screen shows ১ আগ., ২০২৬ and ৩:৪১ PM rather than a Bangla month beside Latin digits. This changed the History screen too, which used the shared formatter; its tests only pin English, which is unchanged.
+
+Design inputs, so the choices can be traced: the UI/UX guidance for a mobile ledger app (48 dp tap targets, a helpful empty state with an action, an error under the field it belongs to, a numeric keypad for amounts, visible confirmation of a saved action, filter chips that wrap instead of clipping, and status told in words as well as colour), and 21st.dev's catalogue for ideas only (an "outstanding total" summary, status badges, a grouped currency-amount field). No code was taken from it: those are React and Tailwind, and this app is Jetpack Compose (D029).
+
+Known, not fixed: on the device suite, `aPastDueDateMakesTheCustomerOverdueEverywhere` failed once in four runs of the unmodified code with a `NullPointerException` inside Compose's own layout bookkeeping (a `TreeMap` corrupted by concurrent access; none of this project's code is in the trace) and passed in the other three. It could not be reproduced. The phone was receiving message notifications at the time. It is recorded rather than dismissed.
+
+---
+
+## D043 — Undoing a Hand-Written Baki Entry
+Decision, in five parts (Step 57).
+
+**An undo is a new entry, decided from stored rows, in one transaction.** `BakiRepository.reverse` loads the entry, refuses it if it is not a hand-written `credit` or `payment`, looks for an existing `entry_reversal` that references it, and only then writes the opposite entry, all inside one Room transaction. This is the "has this already been undone?" question D041 left for Step 57. Two taps, or a tap while the first is still being written, cannot each add an opposite entry: the second finds the first and gets `AlreadyReversed`, and nothing is written. Proved by breaking it: with the check removed, a second undo returned `Reversed` and eight undos fired at once wrote eight opposite entries, where one is right. Rejected: a flag on the original entry (it would edit confirmed history, CLAUDE.md). Rejected for now: a database unique index on `reference` for reversals, which would need a schema version and a migration; the transaction already serialises writes on a phone, and the server's own uniqueness belongs with its baki endpoint (Step 58).
+
+**What is offered, and what is not.** Only a `credit` or `payment` that has not been undone shows an Undo link. A credit sale's baki is never offered one: it is undone with its sale and stock, together, from History (D021), because undoing the baki alone would leave the customer clear while the goods stay gone. An undo entry is never itself undone, and an entry already undone shows no link.
+
+**A small text link per row, not a button, swipe or long-press.** The owner chose this on 2026-09-26, matching the quiet secondary actions on the Stock screen (damage, count): undoing is the exception, so a button on every row would crowd out the amounts. The words are small but the tap area is a full 48 dp high. Rejected: swipe (easy to trigger by accident while scrolling a list of money) and long-press (a hidden gesture a first-time shopkeeper will not find). The cost, seen on the phone: each row is taller, so about two and a half entries fit on screen instead of three.
+
+**It is confirmed first, and the confirmation says what will happen.** A dialog shows the entry (what it is, its amount, when), what the customer owes now beside what they will owe after, and that the entry stays in the list. The "after" figure is `balanceAfterUndo`, which a test proves equals the balance the written opposite entry produces for every entry kind, so the screen cannot promise a number the write does not deliver. If undoing leaves the customer ahead it reads "Paid in advance", never a negative "owes" (D042). The two buttons are stacked full width: side by side, the Bangla confirm label wrapped onto two lines on a 720-wide phone.
+
+**The original stays, marked.** An undone entry is kept in the ledger, softened, with an "Undone" mark and no link, beside the "ভুল লেখা বাতিল" entry that cancelled it, so the list still says what happened. Nothing is deleted or rewritten. The words for undo are "ফিরিয়ে নিন" (take back) rather than "বাতিল" (cancel), because "বাতিল" already means dismissing a dialog in this app.
+
+Not done here, on purpose: like the other hand-written baki entries, an undo is not queued for sync until Step 58 (D042), and the server-side check that an entry is undone at most once belongs there too.

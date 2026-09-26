@@ -9,6 +9,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -19,8 +20,18 @@ import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.hisab.app.AppLanguage
 import com.hisab.app.R
+import com.hisab.app.data.baki.BakiReverseResult
 import com.hisab.app.data.product.ProductEntity
 import com.hisab.app.data.product.ProductWriteResult
+import com.hisab.app.domain.Money
+import com.hisab.app.ui.customer.BakiFormKind
+import com.hisab.app.ui.customer.BakiFormScreen
+import com.hisab.app.ui.customer.BakiNotice
+import com.hisab.app.ui.customer.BakiNoticeKind
+import com.hisab.app.ui.customer.CustomerDetailScreen
+import com.hisab.app.ui.customer.CustomerListScreen
+import com.hisab.app.ui.customer.CustomerListViewModel
+import com.hisab.app.ui.customer.CustomerViewModel
 import com.hisab.app.ui.history.HistoryScreen
 import com.hisab.app.ui.history.HistoryViewModel
 import com.hisab.app.ui.history.SaleDetailScreen
@@ -36,6 +47,7 @@ import com.hisab.app.ui.sync.SyncScreen
 import com.hisab.app.ui.theme.ClayColors
 import com.hisab.app.ui.theme.ClayText
 import com.hisab.app.ui.theme.HisabTheme
+import kotlin.math.absoluteValue
 
 private const val ROUTE_HOME = "home"
 private const val ROUTE_PRODUCTS = "products"
@@ -45,6 +57,10 @@ private const val ROUTE_STOCK = "stock"
 private const val ROUTE_HISTORY = "history"
 private const val ROUTE_SALE_DETAIL = "sale_detail"
 private const val ROUTE_SYNC = "sync"
+private const val ROUTE_CUSTOMERS = "customers"
+private const val ROUTE_CUSTOMER = "customer"
+private const val ROUTE_BAKI_ADD = "baki_add"
+private const val ROUTE_BAKI_PAY = "baki_pay"
 
 /**
  * Which screen is showing. Kept as a saved string rather than a navigation
@@ -64,6 +80,13 @@ fun HisabApp(
         var route by rememberSaveable { mutableStateOf(ROUTE_HOME) }
         var editingId by rememberSaveable { mutableStateOf<String?>(null) }
         var openSaleId by rememberSaveable { mutableStateOf<String?>(null) }
+        var openCustomerId by rememberSaveable { mutableStateOf<String?>(null) }
+        // What was last recorded against the open customer, so their screen can
+        // say so. Saved state rather than a timed message, so it survives a
+        // rotation or a language switch, and it clears when they leave or start
+        // another entry.
+        var noticeKind by rememberSaveable { mutableStateOf<String?>(null) }
+        var noticeAmount by rememberSaveable { mutableLongStateOf(0L) }
         var showConflict by rememberSaveable { mutableStateOf(false) }
 
         when (route) {
@@ -129,6 +152,60 @@ fun HisabApp(
                 SyncScreen(viewModel = viewModel(), onBack = { route = ROUTE_HOME })
             }
 
+            ROUTE_CUSTOMERS -> {
+                BackHandler { route = ROUTE_HOME }
+                CustomersRoute(
+                    onOpenCustomer = { id ->
+                        openCustomerId = id
+                        noticeKind = null
+                        route = ROUTE_CUSTOMER
+                    },
+                    onBack = { route = ROUTE_HOME },
+                )
+            }
+
+            ROUTE_CUSTOMER -> {
+                BackHandler {
+                    noticeKind = null
+                    route = ROUTE_CUSTOMERS
+                }
+                CustomerRoute(
+                    customerId = openCustomerId,
+                    notice = noticeKind?.let { BakiNotice(BakiNoticeKind.valueOf(it), Money(noticeAmount)) },
+                    onAddBaki = {
+                        noticeKind = null
+                        route = ROUTE_BAKI_ADD
+                    },
+                    onReceivePayment = {
+                        noticeKind = null
+                        route = ROUTE_BAKI_PAY
+                    },
+                    onUndone = { amount ->
+                        noticeKind = BakiNoticeKind.UNDONE.name
+                        noticeAmount = amount.minorUnits
+                    },
+                    onBack = {
+                        noticeKind = null
+                        route = ROUTE_CUSTOMERS
+                    },
+                )
+            }
+
+            ROUTE_BAKI_ADD, ROUTE_BAKI_PAY -> {
+                BackHandler { route = ROUTE_CUSTOMER }
+                val kind = if (route == ROUTE_BAKI_ADD) BakiFormKind.ADD_CREDIT else BakiFormKind.RECEIVE_PAYMENT
+                BakiFormRoute(
+                    kind = kind,
+                    customerId = openCustomerId,
+                    onSaved = { amount ->
+                        noticeKind = if (kind == BakiFormKind.ADD_CREDIT) BakiNoticeKind.ADDED.name else BakiNoticeKind.RECEIVED.name
+                        noticeAmount = amount.minorUnits
+                        route = ROUTE_CUSTOMER
+                    },
+                    onBack = { route = ROUTE_CUSTOMER },
+                )
+            }
+
             else -> {
                 HomeScreen(
                     language = language,
@@ -136,6 +213,7 @@ fun HisabApp(
                     onOpenSale = { route = ROUTE_SALE },
                     onOpenStock = { route = ROUTE_STOCK },
                     onOpenHistory = { route = ROUTE_HISTORY },
+                    onOpenCustomers = { route = ROUTE_CUSTOMERS },
                     onOpenProducts = { route = ROUTE_PRODUCTS },
                     onOpenSync = { route = ROUTE_SYNC },
                 )
@@ -275,6 +353,91 @@ private fun SaleDetailRoute(
     LaunchedEffect(saleId) { saleId?.let(viewModel::open) }
 
     SaleDetailScreen(state = state, onReverse = viewModel::reverse, onBack = onBack)
+}
+
+/** The Customers list (Step 52). */
+@Composable
+private fun CustomersRoute(
+    onOpenCustomer: (String) -> Unit,
+    onBack: () -> Unit,
+) {
+    val viewModel: CustomerListViewModel = viewModel()
+    val state by viewModel.uiState.collectAsState()
+
+    CustomerListScreen(
+        state = state,
+        onQueryChange = viewModel::onQueryChange,
+        onFilterChange = viewModel::onFilterChange,
+        onAddCustomer = viewModel::addCustomer,
+        onOpenCustomer = onOpenCustomer,
+        onBack = onBack,
+    )
+}
+
+/**
+ * One customer (Step 53). The same [CustomerViewModel] serves the forms below,
+ * so the balance a form previews is the very number this screen shows.
+ */
+@Composable
+private fun CustomerRoute(
+    customerId: String?,
+    notice: BakiNotice?,
+    onAddBaki: () -> Unit,
+    onReceivePayment: () -> Unit,
+    onUndone: (Money) -> Unit,
+    onBack: () -> Unit,
+) {
+    val viewModel: CustomerViewModel = viewModel()
+    val state by viewModel.uiState.collectAsState()
+
+    LaunchedEffect(customerId) { customerId?.let(viewModel::open) }
+
+    CustomerDetailScreen(
+        state = state,
+        notice = notice,
+        onAddBaki = onAddBaki,
+        onReceivePayment = onReceivePayment,
+        onUndo = { entryId ->
+            viewModel.undo(entryId) { result ->
+                if (result is BakiReverseResult.Reversed) {
+                    onUndone(Money(result.original.amountDelta.minorUnits.absoluteValue))
+                }
+            }
+        },
+        onBack = onBack,
+    )
+}
+
+/**
+ * Add Baki and Receive Payment (Steps 54-55).
+ *
+ * Saving returns to the customer's screen, where the balance has already
+ * changed. That visible change, plus the line saying what was recorded, is the
+ * answer to "did that work?".
+ */
+@Composable
+private fun BakiFormRoute(
+    kind: BakiFormKind,
+    customerId: String?,
+    onSaved: (Money) -> Unit,
+    onBack: () -> Unit,
+) {
+    val viewModel: CustomerViewModel = viewModel()
+    val state by viewModel.uiState.collectAsState()
+
+    LaunchedEffect(customerId) { customerId?.let(viewModel::open) }
+
+    BakiFormScreen(
+        kind = kind,
+        state = state,
+        onSave = { amount, dueDate ->
+            when (kind) {
+                BakiFormKind.ADD_CREDIT -> viewModel.addCredit(amount, dueDate) { onSaved(amount) }
+                BakiFormKind.RECEIVE_PAYMENT -> viewModel.receivePayment(amount) { onSaved(amount) }
+            }
+        },
+        onBack = onBack,
+    )
 }
 
 @Composable
