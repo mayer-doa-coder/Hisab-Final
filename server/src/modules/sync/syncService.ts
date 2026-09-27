@@ -311,7 +311,10 @@ async function applyStockMovementEvent(
  * database's own unique index inside `saveStandaloneEntry` is what makes two
  * devices racing to undo the same entry still only let one through.
  */
-async function applyBakiEntryEvent(shopId: string, event: SyncEventEnvelope): Promise<ApplyOutcome> {
+async function applyBakiEntryEvent(
+  shopId: string,
+  event: SyncEventEnvelope,
+): Promise<ApplyOutcome> {
   if (event.operation !== 'create') {
     // Confirmed history is never edited or deleted (CLAUDE.md). A mistake is
     // a second, opposite entry — which is also a create.

@@ -161,7 +161,7 @@ class BakiRepositoryTest {
                 )
             dao.insert(sale.bakiEntry!!.toEntity())
 
-            assertEquals(BakiReverseResult.NotReversible, repository.reverse(sale.bakiEntry!!.id))
+            assertEquals(BakiReverseResult.NotReversible, repository.reverse(sale.bakiEntry.id))
 
             assertEquals("nothing was written", 1, rows().size)
             assertEquals(9_000L, balance())

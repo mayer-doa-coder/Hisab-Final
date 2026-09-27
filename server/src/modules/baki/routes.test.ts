@@ -1,9 +1,18 @@
 import { after, before, test } from 'node:test'
 import assert from 'node:assert/strict'
+import { randomUUID } from 'node:crypto'
 import { buildApp } from '../../app.js'
 import { closePool } from '../../db/pool.js'
 import { runMigrations } from '../../db/migrate.js'
-import { auth, loginToken, makeCustomer, makeProduct, restock, SHOP_2, type App } from '../../testSupport.js'
+import {
+  auth,
+  loginToken,
+  makeCustomer,
+  makeProduct,
+  restock,
+  SHOP_2,
+  type App,
+} from '../../testSupport.js'
 
 // Step 58: adding baki by hand, receiving a payment, undoing either, and a
 // customer's ledger. Same shop-scoping rule as every other endpoint (D015).
@@ -46,8 +55,7 @@ test('every baki endpoint requires a token', async () => {
     401,
   )
   assert.equal(
-    (await app.inject({ method: 'POST', url: '/baki/entries/x/reversal', payload: {} }))
-      .statusCode,
+    (await app.inject({ method: 'POST', url: '/baki/entries/x/reversal', payload: {} })).statusCode,
     401,
   )
   assert.equal((await app.inject({ method: 'GET', url: '/customers/x/baki' })).statusCode, 401)
@@ -105,7 +113,7 @@ test('sending the same entry id twice stores it once (D004)', async () => {
   const app = buildApp()
   const token = await loginToken(app)
   const customerId = await makeCustomer(app, token)
-  const payload = { id: 'e-1', customerId, type: 'credit', amountPoisha: 50_000 }
+  const payload = { id: randomUUID(), customerId, type: 'credit', amountPoisha: 50_000 }
 
   const first = await addEntry(app, token, payload)
   const second = await addEntry(app, token, payload)
@@ -120,8 +128,9 @@ test('undoing a credit writes the opposite entry, and the balance is right again
   const app = buildApp()
   const token = await loginToken(app)
   const customerId = await makeCustomer(app, token)
-  const credit = (await addEntry(app, token, { customerId, type: 'credit', amountPoisha: 50_000 }))
-    .json().entry
+  const credit = (
+    await addEntry(app, token, { customerId, type: 'credit', amountPoisha: 50_000 })
+  ).json().entry
 
   const response = await reverseEntryReq(app, token, credit.id)
 
@@ -153,12 +162,13 @@ test('an entry can only be undone once, even from two racing requests', async ()
   const app = buildApp()
   const token = await loginToken(app)
   const customerId = await makeCustomer(app, token)
-  const credit = (await addEntry(app, token, { customerId, type: 'credit', amountPoisha: 50_000 }))
-    .json().entry
+  const credit = (
+    await addEntry(app, token, { customerId, type: 'credit', amountPoisha: 50_000 })
+  ).json().entry
 
   const [first, second] = await Promise.all([
-    reverseEntryReq(app, token, credit.id, { id: 'r-1' }),
-    reverseEntryReq(app, token, credit.id, { id: 'r-2' }),
+    reverseEntryReq(app, token, credit.id, { id: randomUUID() }),
+    reverseEntryReq(app, token, credit.id, { id: randomUUID() }),
   ])
   const statuses = [first.statusCode, second.statusCode].sort()
 
@@ -181,8 +191,9 @@ test('an undo cannot itself be undone', async () => {
   const app = buildApp()
   const token = await loginToken(app)
   const customerId = await makeCustomer(app, token)
-  const credit = (await addEntry(app, token, { customerId, type: 'credit', amountPoisha: 50_000 }))
-    .json().entry
+  const credit = (
+    await addEntry(app, token, { customerId, type: 'credit', amountPoisha: 50_000 })
+  ).json().entry
   const undo = (await reverseEntryReq(app, token, credit.id)).json().entry
 
   const response = await reverseEntryReq(app, token, undo.id)

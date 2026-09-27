@@ -7,7 +7,12 @@ import { generateId, type EntityId } from '../../domain/id.js'
 import { money } from '../../domain/money.js'
 import { completeCreditSale, reverseSale } from '../../domain/sale.js'
 import { quantity } from '../../domain/quantity.js'
-import { checkPushedBakiEntry, BAKI_ENTRY_NOT_FOUND, INVALID_PAYLOAD, NOT_REVERSIBLE } from './bakiValidation.js'
+import {
+  checkPushedBakiEntry,
+  BAKI_ENTRY_NOT_FOUND,
+  INVALID_PAYLOAD,
+  NOT_REVERSIBLE,
+} from './bakiValidation.js'
 
 const AT = new Date('2026-09-27T10:00:00.000Z')
 const RAHIM = 'rahim' as EntityId
@@ -22,9 +27,15 @@ test('a credit must be positive, and a payment must be negative', () => {
   const credit = addCredit(RAHIM, money(50_000), AT)
   const payment = receivePayment(RAHIM, money(20_000), AT)
 
-  assert.equal(checkPushedBakiEntry({ ...credit, amountDelta: money(-50_000) }, null), INVALID_PAYLOAD)
+  assert.equal(
+    checkPushedBakiEntry({ ...credit, amountDelta: money(-50_000) }, null),
+    INVALID_PAYLOAD,
+  )
   assert.equal(checkPushedBakiEntry({ ...credit, amountDelta: money(0) }, null), INVALID_PAYLOAD)
-  assert.equal(checkPushedBakiEntry({ ...payment, amountDelta: money(20_000) }, null), INVALID_PAYLOAD)
+  assert.equal(
+    checkPushedBakiEntry({ ...payment, amountDelta: money(20_000) }, null),
+    INVALID_PAYLOAD,
+  )
 })
 
 test('a credit or payment names no reference — that field is never free text (D041)', () => {
@@ -46,7 +57,12 @@ test('an undo of an entry the server does not have is refused', () => {
 })
 
 test("a credit sale's baki, and a sale reversal's baki, cannot be undone here — they go with their sale (D021)", () => {
-  const sale = completeCreditSale('shop', RAHIM, [{ productId: generateId(), quantity: quantity(1000), unitPrice: money(9_000) }], AT)
+  const sale = completeCreditSale(
+    'shop',
+    RAHIM,
+    [{ productId: generateId(), quantity: quantity(1000), unitPrice: money(9_000) }],
+    AT,
+  )
   const saleReversal = reverseSale(sale, AT)
 
   // An attempted undo naming either one as its target: sound in every other
@@ -63,13 +79,21 @@ test("a credit sale's baki, and a sale reversal's baki, cannot be undone here �
   })
 
   assert.equal(checkPushedBakiEntry(undoOf(sale.bakiEntry!), sale.bakiEntry), NOT_REVERSIBLE)
-  assert.equal(checkPushedBakiEntry(undoOf(saleReversal.bakiEntry!), saleReversal.bakiEntry), NOT_REVERSIBLE)
+  assert.equal(
+    checkPushedBakiEntry(undoOf(saleReversal.bakiEntry!), saleReversal.bakiEntry),
+    NOT_REVERSIBLE,
+  )
 })
 
 test('an undo cannot itself be undone', () => {
   const credit = addCredit(RAHIM, money(50_000), AT)
   const undo = reverseEntry(credit, AT)
-  const undoUndo: BakiEntry = { ...undo, id: generateId(), reference: undo.id, amountDelta: money(-undo.amountDelta) }
+  const undoUndo: BakiEntry = {
+    ...undo,
+    id: generateId(),
+    reference: undo.id,
+    amountDelta: money(-undo.amountDelta),
+  }
 
   assert.equal(checkPushedBakiEntry(undoUndo, undo), NOT_REVERSIBLE)
 })
@@ -97,8 +121,13 @@ test('an undo must actually name something', () => {
   assert.equal(checkPushedBakiEntry(noReference, credit), INVALID_PAYLOAD)
 })
 
-test("credit_sale and reversal cannot arrive standalone — only embedded in a Sale event (D021, D038)", () => {
-  const sale = completeCreditSale('shop', RAHIM, [{ productId: generateId(), quantity: quantity(1000), unitPrice: money(9_000) }], AT)
+test('credit_sale and reversal cannot arrive standalone — only embedded in a Sale event (D021, D038)', () => {
+  const sale = completeCreditSale(
+    'shop',
+    RAHIM,
+    [{ productId: generateId(), quantity: quantity(1000), unitPrice: money(9_000) }],
+    AT,
+  )
   assert.equal(checkPushedBakiEntry(sale.bakiEntry!, null), INVALID_PAYLOAD)
   assert.equal(checkPushedBakiEntry(reverseSale(sale, AT).bakiEntry!, null), INVALID_PAYLOAD)
 })

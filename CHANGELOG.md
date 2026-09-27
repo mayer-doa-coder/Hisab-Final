@@ -67,8 +67,16 @@ Versions use semantic versioning. The first public research release will be `v1.
 - Step 60: confirmed by direct comparison that `values/strings.xml` and `values-en/strings.xml` hold exactly the same 211 (with 3 Bangla-only `translatable="false"` exceptions already known) and 208 keys, no empty values, and that every Compose call in the customer/baki screens reaches its text through `stringResource` - no hardcoded literal found.
 - Step 61: confirmed every place a customer's name is shown goes through `ClayUserText`/`scriptAwareText` (the per-script renderer, D010), and every app label goes through `ClayText`, which already carries the current language's font - matching the screens checked by hand on the phone earlier in this milestone (Steps 52-57).
 
-### Verification pending for Steps 58-61
-None of the above has been run yet - no `ci-local.sh`, no on-device suite, no manual walkthrough of the new endpoints or the touch-target fix. This is deliberate: implementation was done first, verification is a separate pass, on request.
+### Verified (M3 Steps 58-61, and the two checks M1 still owed) - 2026-09-27
+- `ci-local.sh` in full: all 13 steps pass, 198 Android unit tests and 314 server tests, 0 failures. On-phone suite: 204 tests, 0 failures, 0 skipped, across 26 classes, with the dev server and `adb reverse` up so the end-to-end sync tests really ran.
+- The new endpoints walked by hand: credit 500, payment 200, credit 100 = 400 over the API; undoing the payment gives 600; a second undo is refused ALREADY_REVERSED; an undo of an undo is refused NOT_REVERSIBLE; another shop gets 404 on read, write and undo; no token is 401; a due date comes back as a date, not a timestamp.
+- The offline round trip on the phone: customer, credit, payment, credit and an undo all written in airplane mode, then one sync - pushed 8, pulled 758, conflicts 0 - after which the server held the same ledger, the reversal naming the entry it undid.
+- Step 59 measured on the phone at 450 dpi: every clickable target on Add Product, Receive Payment and Customer Details is at or above 48 dp, the chips landing at exactly 48.00 dp. Step 60 walked in both languages across every M1-M3 screen and back. Step 61 seen on screen: "রহিম Traders" renders each script in its own font.
+- Fixed while verifying: `baki/routes.ts` did not handle every `saveStandaloneEntry` outcome, so the server did not compile; `BakiSyncEndToEndTest.kt` had a Kotlin `assertEquals` argument order that did not compile, and built a sync envelope whose `entityId` and payload `id` disagreed; and both new server test files used fixed ids and names against a database that is kept between runs, so they passed once and then failed against their own leftovers - now unique per run, proved by three consecutive green runs rather than one.
+
+### Closed (M1's two owed checks) - 2026-09-27
+- Step 28: a product added, edited and found by its alias on the phone with airplane mode confirmed on; the edit later reached the server as revision 2.
+- Step 33 by hand: a product created straight on the server reached the phone after one sync, with its aliases, unit and both prices intact.
 
 ### Added (M3 — undoing a baki entry, Step 57)
 - An "Undo" link (ফিরিয়ে নিন) on each hand-written credit or payment in a customer's ledger. It asks first, showing the entry, what the customer owes now beside what they will owe after, and that the entry stays in the list. Confirming writes the opposite entry; nothing is edited or deleted (D043).

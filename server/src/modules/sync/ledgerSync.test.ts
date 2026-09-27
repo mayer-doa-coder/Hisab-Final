@@ -432,9 +432,7 @@ test('a payment pushed from a phone reduces the balance, and can take it negativ
   await push(app, token, [customerEvent(customer, 'Salma')])
   await push(app, token, [bakiEvent(addCredit(customer, money(50_000), AT))])
 
-  const [result] = await push(app, token, [
-    bakiEvent(receivePayment(customer, money(70_000), AT)),
-  ])
+  const [result] = await push(app, token, [bakiEvent(receivePayment(customer, money(70_000), AT))])
 
   assert.equal(result!.status, 'applied')
   assert.equal(await balanceOf(customer), -20_000)
@@ -510,7 +508,7 @@ test('an undo of an entry the server has never seen is refused', async () => {
   assert.equal(result!.code, 'BAKI_ENTRY_NOT_FOUND')
 })
 
-test("a credit_sale or reversal type cannot arrive standalone — only embedded in a Sale event (D021, D038)", async () => {
+test('a credit_sale or reversal type cannot arrive standalone — only embedded in a Sale event (D021, D038)', async () => {
   const app = buildApp()
   const { token, rice } = await shopWithStock(app)
   const customer = generateId()
