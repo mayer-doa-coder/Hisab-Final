@@ -5,11 +5,14 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.hisab.app.data.HisabDatabase
+import com.hisab.app.data.sync.BakiEntrySyncPayload
+import com.hisab.app.data.sync.SyncOutboxDao
 import com.hisab.app.domain.BakiEntryType
 import com.hisab.app.domain.EntityId
 import com.hisab.app.domain.Money
 import com.hisab.app.domain.Quantity
 import com.hisab.app.domain.SaleLine
+import com.hisab.app.domain.addCredit
 import com.hisab.app.domain.calculateBalance
 import com.hisab.app.domain.completeCreditSale
 import com.hisab.app.domain.generateId
@@ -17,6 +20,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.runBlocking
+import org.json.JSONObject
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -24,6 +28,7 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import java.time.Instant
+import java.time.LocalDate
 import java.time.temporal.ChronoUnit
 
 /**
@@ -39,6 +44,7 @@ class BakiRepositoryTest {
     private lateinit var database: HisabDatabase
     private lateinit var repository: BakiRepository
     private lateinit var dao: BakiEntryDao
+    private lateinit var outbox: SyncOutboxDao
 
     private val rahim = EntityId("rahim")
 
@@ -48,6 +54,7 @@ class BakiRepositoryTest {
         database = Room.inMemoryDatabaseBuilder(context, HisabDatabase::class.java).build()
         repository = BakiRepository(database)
         dao = database.bakiEntryDao()
+        outbox = database.syncOutboxDao()
     }
 
     @After
@@ -189,5 +196,84 @@ class BakiRepositoryTest {
             val entries = rows().map { it.toDomain() }
             assertEquals(calculateBalance(entries, rahim).minorUnits, balance())
             assertEquals(-20_000L, balance())
+        }
+
+    // --- Step 58: every write queues a sync event, and a pulled entry is applied idempotently ---
+
+    @Test
+    fun addingCreditQueuesOneCreateEventCarryingTheEntry() =
+        runBlocking<Unit> {
+            val entry = repository.addCredit(rahim, Money(50_000), LocalDate.of(2026, 10, 1))
+
+            val queued = outbox.all()
+            assertEquals(1, queued.size)
+            val event = queued.single()
+            assertEquals(BakiRepository.ENTITY_TYPE_BAKI_ENTRY, event.entityType)
+            assertEquals(BakiRepository.OPERATION_CREATE, event.operation)
+            assertEquals(entry.id.value, event.entityId)
+            assertEquals(entry, BakiEntrySyncPayload.fromJson(JSONObject(event.payload)))
+        }
+
+    @Test
+    fun receivingAPaymentQueuesOneCreateEvent() =
+        runBlocking<Unit> {
+            repository.addCredit(rahim, Money(50_000), null)
+            outbox.all().forEach { outbox.deleteByEventId(it.eventId) }
+
+            val payment = repository.receivePayment(rahim, Money(20_000))
+
+            val event = outbox.all().single()
+            assertEquals(payment.id.value, event.entityId)
+            assertEquals(Money(-20_000), BakiEntrySyncPayload.fromJson(JSONObject(event.payload)).amountDelta)
+        }
+
+    @Test
+    fun undoingAnEntryQueuesItsOwnCreateEvent() =
+        runBlocking<Unit> {
+            val credit = repository.addCredit(rahim, Money(50_000), null)
+            outbox.all().forEach { outbox.deleteByEventId(it.eventId) }
+
+            val result = repository.reverse(credit.id) as BakiReverseResult.Reversed
+
+            val event = outbox.all().single()
+            assertEquals("an undo is sync-wise just another creation (D043)", BakiRepository.OPERATION_CREATE, event.operation)
+            assertEquals(result.reversal.id.value, event.entityId)
+        }
+
+    @Test
+    fun aRefusedUndoQueuesNothing() =
+        runBlocking<Unit> {
+            val credit = repository.addCredit(rahim, Money(50_000), null)
+            repository.reverse(credit.id)
+            val queuedAfterFirst = outbox.count()
+
+            repository.reverse(credit.id)
+
+            assertEquals("the second, refused undo queued nothing new", queuedAfterFirst, outbox.count())
+        }
+
+    @Test
+    fun aFirstArrivalFromTheServerIsStoredWithNoSyncEventQueued() =
+        runBlocking<Unit> {
+            val entry = addCredit(rahim, Money(50_000), Instant.parse("2026-09-26T10:00:00Z"))
+
+            repository.applyFromServer(entry)
+
+            assertEquals(entry, dao.byId(entry.id.value)!!.toDomain())
+            assertEquals("applying a server entry is not a local write — nothing to send back (D003)", 0, outbox.count())
+        }
+
+    @Test
+    fun aServerAcknowledgementOfThisPhonesOwnEntryOnlyMarksItReceived() =
+        runBlocking<Unit> {
+            val entry = repository.addCredit(rahim, Money(50_000), null)
+            val before = dao.byId(entry.id.value)!!
+
+            repository.applyFromServer(entry.copy(time = entry.time.copy(serverReceivedAt = Instant.now())))
+
+            val after = dao.byId(entry.id.value)!!
+            assertEquals("the money is untouched", before.amountDeltaPoisha, after.amountDeltaPoisha)
+            assertTrue("now known to have reached the server", after.serverReceivedAt != null)
+            assertEquals("still exactly one row, not a second one", 1, rows().size)
         }
 }

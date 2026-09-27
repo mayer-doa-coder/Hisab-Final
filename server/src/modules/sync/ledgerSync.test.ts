@@ -4,6 +4,8 @@ import { randomUUID } from 'node:crypto'
 import { buildApp } from '../../app.js'
 import { closePool, getPool } from '../../db/pool.js'
 import { runMigrations } from '../../db/migrate.js'
+import { addCredit, receivePayment, reverseEntry } from '../../domain/baki.js'
+import type { BakiEntry } from '../../domain/bakiEntry.js'
 import { generateId, type EntityId } from '../../domain/id.js'
 import { money } from '../../domain/money.js'
 import { quantity } from '../../domain/quantity.js'
@@ -52,6 +54,7 @@ const restockEvent = (productId: string, amount: number) => {
   const movement = restock(productId as EntityId, quantity(amount), AT)
   return envelope('StockMovement', movement.id, movement)
 }
+const bakiEvent = (entry: BakiEntry) => envelope('BakiEntry', entry.id, entry)
 
 async function push(app: App, token: string, events: unknown[]) {
   const response = await app.inject({
@@ -390,4 +393,166 @@ test("a pull never returns another shop's sales, customers or stock", async () =
   assert.ok(!ids.has(sale.sale.id))
   assert.ok(!ids.has(customer))
   assert.ok(!ids.has(rice))
+})
+
+// --- Hand-written baki entries (Steps 54, 55, 57, synced at Step 58) ---
+
+test('a credit added by hand and pushed from a phone updates the balance', async () => {
+  const app = buildApp()
+  const shop1 = await loginToken(app)
+  const customer = generateId()
+  await push(app, shop1, [customerEvent(customer, 'রহিম')])
+  const credit = addCredit(customer, money(50_000), AT)
+
+  const [result] = await push(app, shop1, [bakiEvent(credit)])
+
+  assert.equal(result!.status, 'applied')
+  assert.equal(await balanceOf(customer), 50_000)
+})
+
+test('the same credit pushed twice is applied once (D004)', async () => {
+  const app = buildApp()
+  const token = await loginToken(app)
+  const customer = generateId()
+  await push(app, token, [customerEvent(customer, 'Karim')])
+  const event = bakiEvent(addCredit(customer, money(50_000), AT))
+
+  const [first] = await push(app, token, [event])
+  const [second] = await push(app, token, [event])
+
+  assert.equal(first!.status, 'applied')
+  assert.equal(second!.status, 'already-applied')
+  assert.equal(await balanceOf(customer), 50_000, 'counted once')
+})
+
+test('a payment pushed from a phone reduces the balance, and can take it negative', async () => {
+  const app = buildApp()
+  const token = await loginToken(app)
+  const customer = generateId()
+  await push(app, token, [customerEvent(customer, 'Salma')])
+  await push(app, token, [bakiEvent(addCredit(customer, money(50_000), AT))])
+
+  const [result] = await push(app, token, [
+    bakiEvent(receivePayment(customer, money(70_000), AT)),
+  ])
+
+  assert.equal(result!.status, 'applied')
+  assert.equal(await balanceOf(customer), -20_000)
+})
+
+test('a bad credit — zero, negative, or naming a reference — is refused, and nothing is written', async () => {
+  const app = buildApp()
+  const token = await loginToken(app)
+  const customer = generateId()
+  await push(app, token, [customerEvent(customer, 'Belal')])
+
+  const zero = bakiEvent(addCredit(customer, money(1), AT, null, generateId()))
+  zero.payload.amountDelta = 0
+  const negative = bakiEvent(addCredit(customer, money(1), AT, null, generateId()))
+  negative.payload.amountDelta = -50_000
+  const withReference = bakiEvent(addCredit(customer, money(50_000), AT, null, generateId()))
+  withReference.payload.reference = generateId()
+
+  const results = await push(app, token, [zero, negative, withReference])
+
+  assert.deepEqual(
+    results.map((r) => r.status),
+    ['rejected', 'rejected', 'rejected'],
+  )
+  assert.deepEqual(
+    results.map((r) => r.code),
+    ['INVALID_PAYLOAD', 'INVALID_PAYLOAD', 'INVALID_PAYLOAD'],
+  )
+  assert.equal(await balanceOf(customer), 0, 'nothing was written')
+})
+
+test('undoing a hand-written credit through sync writes the opposite entry and clears it', async () => {
+  const app = buildApp()
+  const token = await loginToken(app)
+  const customer = generateId()
+  await push(app, token, [customerEvent(customer, 'Anwar')])
+  const credit = addCredit(customer, money(50_000), AT)
+  await push(app, token, [bakiEvent(credit)])
+
+  const [result] = await push(app, token, [bakiEvent(reverseEntry(credit, AT))])
+
+  assert.equal(result!.status, 'applied')
+  assert.equal(await balanceOf(customer), 0)
+})
+
+test('two devices undoing the same hand-written entry: the second is refused (D043)', async () => {
+  const app = buildApp()
+  const token = await loginToken(app)
+  const customer = generateId()
+  await push(app, token, [customerEvent(customer, 'Dulal')])
+  const credit = addCredit(customer, money(50_000), AT)
+  await push(app, token, [bakiEvent(credit)])
+
+  const [first] = await push(app, token, [bakiEvent(reverseEntry(credit, AT, generateId()))])
+  const [second] = await push(app, token, [bakiEvent(reverseEntry(credit, AT, generateId()))])
+
+  assert.equal(first!.status, 'applied')
+  assert.equal(second!.status, 'rejected')
+  assert.equal(second!.code, 'ALREADY_REVERSED')
+  assert.equal(await balanceOf(customer), 0, 'undone once')
+})
+
+test('an undo of an entry the server has never seen is refused', async () => {
+  const app = buildApp()
+  const token = await loginToken(app)
+  const customer = generateId()
+  await push(app, token, [customerEvent(customer, 'Farida')])
+  const neverPushed = addCredit(customer, money(1), AT)
+
+  const [result] = await push(app, token, [bakiEvent(reverseEntry(neverPushed, AT))])
+
+  assert.equal(result!.status, 'rejected')
+  assert.equal(result!.code, 'BAKI_ENTRY_NOT_FOUND')
+})
+
+test("a credit_sale or reversal type cannot arrive standalone — only embedded in a Sale event (D021, D038)", async () => {
+  const app = buildApp()
+  const { token, rice } = await shopWithStock(app)
+  const customer = generateId()
+  await push(app, token, [customerEvent(customer, 'Standalone Test')])
+  const sale = completeCreditSale('shop-1', customer, riceLine(rice), AT)
+
+  const [result] = await push(app, token, [bakiEvent(sale.bakiEntry!)])
+
+  assert.equal(result!.status, 'rejected')
+  assert.equal(result!.code, 'INVALID_PAYLOAD')
+})
+
+test("one shop cannot add baki to another shop's customer through sync", async () => {
+  const app = buildApp()
+  const shop1 = await loginToken(app)
+  const customer = generateId()
+  await push(app, shop1, [customerEvent(customer, "Shop one's customer")])
+
+  const shop2 = await loginToken(app, SHOP_2)
+  const [result] = await push(app, shop2, [bakiEvent(addCredit(customer, money(50_000), AT))])
+
+  assert.equal(result!.status, 'rejected')
+  assert.equal(await balanceOf(customer), 0)
+})
+
+test('a pull returns a hand-written credit and its undo, each once, never inside another change', async () => {
+  const app = buildApp()
+  const token = await loginToken(app)
+  const before = (await pullAll(app, token)).cursor
+  const customer = generateId()
+  await push(app, token, [customerEvent(customer, 'Pulled Baki')])
+  const credit = addCredit(customer, money(50_000), AT)
+  await push(app, token, [bakiEvent(credit)])
+  await push(app, token, [bakiEvent(reverseEntry(credit, AT))])
+
+  const { events } = await pullAll(app, token, before)
+  const mine = events.filter((e) => e.entityType === 'BakiEntry')
+
+  assert.equal(mine.length, 2)
+  assert.deepEqual(
+    mine.map((e) => e.payload.type),
+    ['credit', 'entry_reversal'],
+  )
+  assert.ok(mine[0]!.payload.time.serverReceivedAt, 'a device learns the entry reached the server')
 })

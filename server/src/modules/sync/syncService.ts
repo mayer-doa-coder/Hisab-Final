@@ -1,6 +1,7 @@
 import type { PoolClient } from 'pg'
 import { getPool } from '../../db/pool.js'
 import { withTransaction } from '../../db/transaction.js'
+import type { BakiEntry } from '../../domain/bakiEntry.js'
 import type { Customer } from '../../domain/customer.js'
 import { ID_TAKEN } from '../../domain/id.js'
 import { PRODUCT_UNITS, type Product, type ProductInput } from '../../domain/product.js'
@@ -8,6 +9,13 @@ import { REVISION_CONFLICT } from '../../domain/revision.js'
 import type { SaleTransaction } from '../../domain/sale.js'
 import type { StockMovement } from '../../domain/stock.js'
 import type { SyncEventEnvelope } from '../../domain/syncEvent.js'
+import {
+  changedStandaloneBakiEntries,
+  findBakiEntry,
+  findReversalOfEntry,
+  saveStandaloneEntry,
+} from '../baki/bakiRepository.js'
+import { checkPushedBakiEntry } from '../baki/bakiValidation.js'
 import { changedCustomers, createCustomer } from '../customers/customerRepository.js'
 import { changedStandaloneMovements, saveStandaloneMovement } from '../inventory/stockRepository.js'
 import {
@@ -25,6 +33,7 @@ import {
 import {
   ALREADY_REVERSED,
   checkPushedSale,
+  parseBakiEntry,
   parseSaleTransaction,
   parseStandaloneMovement,
 } from '../sales/saleValidation.js'
@@ -44,6 +53,7 @@ export const ENTITY_PRODUCT = 'Product'
 export const ENTITY_CUSTOMER = 'Customer'
 export const ENTITY_SALE = 'Sale'
 export const ENTITY_STOCK_MOVEMENT = 'StockMovement'
+export const ENTITY_BAKI_ENTRY = 'BakiEntry'
 
 export type ApplyOutcome =
   | { readonly eventId: string; readonly status: 'applied' }
@@ -292,6 +302,58 @@ async function applyStockMovementEvent(
 }
 
 /**
+ * A hand-written baki entry — a credit, a payment, or an undo of either
+ * (Steps 54, 55, 57, made offline and synced at Step 58).
+ *
+ * "Has this entry already been undone?" is asked here from stored rows, the
+ * same question the phone's own transaction asks (D043) — this is the answer
+ * between two devices, where the phone's transaction alone cannot reach. The
+ * database's own unique index inside `saveStandaloneEntry` is what makes two
+ * devices racing to undo the same entry still only let one through.
+ */
+async function applyBakiEntryEvent(shopId: string, event: SyncEventEnvelope): Promise<ApplyOutcome> {
+  if (event.operation !== 'create') {
+    // Confirmed history is never edited or deleted (CLAUDE.md). A mistake is
+    // a second, opposite entry — which is also a create.
+    return { eventId: event.eventId, status: 'rejected', code: UNSUPPORTED_OPERATION }
+  }
+  const entry = parseBakiEntry(event.payload)
+  if (entry === null || entry.id !== event.entityId) {
+    return { eventId: event.eventId, status: 'rejected', code: INVALID_PAYLOAD }
+  }
+
+  return applyInOneTransaction(shopId, event, async (db) => {
+    // A retry of an entry already stored (under a different event id) is the
+    // same entry, not a second one (D004).
+    if ((await findBakiEntry(shopId, entry.id, db)) !== null) return null
+
+    const original: BakiEntry | null =
+      entry.type === 'entry_reversal' && entry.reference !== null
+        ? await findBakiEntry(shopId, entry.reference, db)
+        : null
+
+    const problem = checkPushedBakiEntry(entry, original)
+    if (problem !== null) return problem
+
+    if (original !== null && (await findReversalOfEntry(shopId, original.id, db)) !== null) {
+      return ALREADY_REVERSED
+    }
+
+    const saved = await saveStandaloneEntry(db, shopId, entry)
+    switch (saved.status) {
+      case 'created':
+      case 'exists':
+        return null
+      case 'already-reversed':
+        return ALREADY_REVERSED
+      case 'refused':
+        // The customer is not this shop's, or the id belongs to another shop.
+        return UNKNOWN_ENTITY
+    }
+  })
+}
+
+/**
  * Applies one pushed event to the real data (Steps 32 and 47). The same event
  * id is never applied twice; an event whose base revision is stale is refused
  * and left unclaimed, so the phone can retry it after pulling.
@@ -304,6 +366,8 @@ export async function applyEvent(shopId: string, event: SyncEventEnvelope): Prom
       return applySaleEvent(shopId, event)
     case ENTITY_STOCK_MOVEMENT:
       return applyStockMovementEvent(shopId, event)
+    case ENTITY_BAKI_ENTRY:
+      return applyBakiEntryEvent(shopId, event)
     case ENTITY_PRODUCT:
       break
     default:
@@ -346,7 +410,7 @@ function mutableEnvelope(entityType: string, entity: Product | Customer): SyncEv
 function ledgerEnvelope(
   entityType: string,
   id: string,
-  payload: SaleTransaction | StockMovement,
+  payload: SaleTransaction | StockMovement | BakiEntry,
   occurredAt: string,
 ): SyncEventEnvelope {
   return {
@@ -365,25 +429,27 @@ function ledgerEnvelope(
  * sales and stand-alone stock movements changed after the cursor, oldest
  * first, at most one page.
  *
- * Every table numbers its changes from one shared counter, so the four lists
+ * Every table numbers its changes from one shared counter, so the five lists
  * can be merged into one order. Each is read up to a page, merged, and cut to
  * a page — which gives exactly the oldest page across all of them, however
  * the changes are spread between tables. The cursor returned is the number of
  * the last change handed back; asking again from it continues the list.
  *
  * A sale arrives as one change holding its lines, stock movements and baki
- * entry, so a page boundary can never split a sale (D021).
+ * entry, so a page boundary can never split a sale (D021). A hand-written
+ * baki entry (D041) has no lines or movements to carry, so it travels alone.
  */
 export async function changesSince(
   shopId: string,
   cursor: number,
   pageSize = PULL_PAGE_SIZE,
 ): Promise<{ events: SyncEventEnvelope[]; cursor: number }> {
-  const [products, customers, sales, movements] = await Promise.all([
+  const [products, customers, sales, movements, bakiEntries] = await Promise.all([
     changedProducts(shopId, cursor, pageSize),
     changedCustomers(shopId, cursor, pageSize),
     changedSales(shopId, cursor, pageSize),
     changedStandaloneMovements(shopId, cursor, pageSize),
+    changedStandaloneBakiEntries(shopId, cursor, pageSize),
   ])
 
   const merged: Array<{ seq: number; event: SyncEventEnvelope }> = [
@@ -407,6 +473,10 @@ export async function changesSince(
     ...movements.map(({ movement, seq }) => ({
       seq,
       event: ledgerEnvelope(ENTITY_STOCK_MOVEMENT, movement.id, movement, movement.time.occurredAt),
+    })),
+    ...bakiEntries.map(({ entry, seq }) => ({
+      seq,
+      event: ledgerEnvelope(ENTITY_BAKI_ENTRY, entry.id, entry, entry.time.occurredAt),
     })),
   ]
     .sort((a, b) => a.seq - b.seq)

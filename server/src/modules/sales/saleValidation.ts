@@ -90,7 +90,11 @@ export function parseStandaloneMovement(payload: unknown): StockMovement | null 
   }
 }
 
-function parseBaki(value: unknown): BakiEntry | null {
+/**
+ * Reads a BakiEntry from JSON — the shape a sale's embedded entry and a
+ * hand-written entry pushed on its own (Step 58) are both read with.
+ */
+export function parseBakiEntry(value: unknown): BakiEntry | null {
   if (!isObject(value)) return null
   const { id, customerId, amountDelta, type, reference, dueDate } = value
   const time = parseTime(value.time)
@@ -176,7 +180,7 @@ export function parseSaleTransaction(payload: unknown): SaleTransaction | null {
 
   let bakiEntry: BakiEntry | null = null
   if (payload.bakiEntry !== null && payload.bakiEntry !== undefined) {
-    bakiEntry = parseBaki(payload.bakiEntry)
+    bakiEntry = parseBakiEntry(payload.bakiEntry)
     if (bakiEntry === null) return null
   }
 

@@ -2,6 +2,7 @@ package com.hisab.app.data.sync
 
 import com.hisab.app.data.HisabDatabase
 import com.hisab.app.data.LOCAL_SHOP_ID
+import com.hisab.app.data.baki.BakiRepository
 import com.hisab.app.data.customer.CustomerRepository
 import com.hisab.app.data.product.ProductRepository
 import com.hisab.app.data.sale.SaleRepository
@@ -20,7 +21,8 @@ class NotSignedInException : IllegalStateException("no saved session, and no pas
 
 /**
  * One sync run: send what this phone changed, then take what the server has
- * (Steps 32, 33 and 47) — products, customers, sales and stock movements.
+ * (Steps 32, 33, 47 and 58) — products, customers, sales, stock movements and
+ * hand-written baki entries.
  *
  * Sending comes first on purpose. Pulling first would overwrite a local edit
  * that has not been sent yet, and the whole point of the outbox is that no
@@ -42,6 +44,7 @@ class SyncEngine(
     private val customers = CustomerRepository(database, shopId = shopId)
     private val sales = SaleRepository(database, shopId = shopId)
     private val stock = StockRepository(database, shopId = shopId)
+    private val baki = BakiRepository(database)
 
     suspend fun sync(password: String? = null): SyncReport {
         val token = signIn(password)
@@ -137,6 +140,10 @@ class SyncEngine(
 
             StockRepository.ENTITY_TYPE_STOCK_MOVEMENT -> {
                 stock.applyFromServer(StockMovementSyncPayload.fromJson(change.payload))
+            }
+
+            BakiRepository.ENTITY_TYPE_BAKI_ENTRY -> {
+                baki.applyFromServer(BakiEntrySyncPayload.fromJson(change.payload))
             }
 
             // A kind of change this version of the app does not know yet — a

@@ -109,27 +109,6 @@ object SaleSyncPayload {
             bakiEntry = if (json.isNull("bakiEntry")) null else bakiFrom(json.getJSONObject("bakiEntry")),
         )
     }
-
-    private fun bakiJson(entry: BakiEntry): JSONObject =
-        JSONObject()
-            .put("id", entry.id.value)
-            .put("customerId", entry.customerId.value)
-            .put("amountDelta", entry.amountDelta.minorUnits)
-            .put("type", entry.type.name.lowercase())
-            .put("reference", entry.reference ?: JSONObject.NULL)
-            .put("dueDate", entry.dueDate?.toString() ?: JSONObject.NULL)
-            .put("time", timeJson(entry.time))
-
-    private fun bakiFrom(json: JSONObject): BakiEntry =
-        BakiEntry(
-            id = EntityId(json.getString("id")),
-            customerId = EntityId(json.getString("customerId")),
-            amountDelta = Money(json.getLong("amountDelta")),
-            type = BakiEntryType.valueOf(json.getString("type").uppercase()),
-            reference = json.optStringOrNull("reference"),
-            dueDate = json.optStringOrNull("dueDate")?.let(LocalDate::parse),
-            time = timeFrom(json.getJSONObject("time")),
-        )
 }
 
 /** A stock movement that stands on its own — a restock, damage or shelf count. */
@@ -156,6 +135,20 @@ object StockMovementSyncPayload {
         )
 }
 
+/**
+ * A baki entry that stands on its own — added by hand, a payment, or an undo
+ * of either (Step 58). A credit sale's own entry is never written this way: it
+ * travels embedded in a Sale event, with the sale and its stock (D021, D038).
+ *
+ * The shape is the same [bakiJson]/[bakiFrom] a sale's embedded entry uses, so
+ * one reader and one writer serve both (D026).
+ */
+object BakiEntrySyncPayload {
+    fun toJson(entry: BakiEntry): String = bakiJson(entry).toString()
+
+    fun fromJson(json: JSONObject): BakiEntry = bakiFrom(json)
+}
+
 /** A customer. Only created in M2 — by a credit sale — so the push carries just what was typed. */
 object CustomerSyncPayload {
     fun toJson(customer: CustomerEntity): String =
@@ -180,6 +173,27 @@ object CustomerSyncPayload {
             deletedAt = json.optStringOrNull("deletedAt")?.let(Instant::parse),
         )
 }
+
+private fun bakiJson(entry: BakiEntry): JSONObject =
+    JSONObject()
+        .put("id", entry.id.value)
+        .put("customerId", entry.customerId.value)
+        .put("amountDelta", entry.amountDelta.minorUnits)
+        .put("type", entry.type.name.lowercase())
+        .put("reference", entry.reference ?: JSONObject.NULL)
+        .put("dueDate", entry.dueDate?.toString() ?: JSONObject.NULL)
+        .put("time", timeJson(entry.time))
+
+private fun bakiFrom(json: JSONObject): BakiEntry =
+    BakiEntry(
+        id = EntityId(json.getString("id")),
+        customerId = EntityId(json.getString("customerId")),
+        amountDelta = Money(json.getLong("amountDelta")),
+        type = BakiEntryType.valueOf(json.getString("type").uppercase()),
+        reference = json.optStringOrNull("reference"),
+        dueDate = json.optStringOrNull("dueDate")?.let(LocalDate::parse),
+        time = timeFrom(json.getJSONObject("time")),
+    )
 
 private fun timeJson(time: TransactionTime): JSONObject =
     JSONObject()

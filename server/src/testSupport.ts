@@ -65,6 +65,25 @@ export async function stockOf(app: App, token: string, productId: string): Promi
   return response.json().quantity as number
 }
 
+/** Creates a customer through the real endpoint and returns their id. */
+export async function makeCustomer(
+  app: App,
+  token: string,
+  overrides: Record<string, unknown> = {},
+): Promise<string> {
+  const id = randomUUID()
+  const response = await app.inject({
+    method: 'POST',
+    url: '/customers',
+    headers: auth(token),
+    payload: { id, name: `Test ${id.slice(0, 8)}`, ...overrides },
+  })
+  if (response.statusCode !== 201) {
+    throw new Error(`could not create a customer: ${response.statusCode} ${response.body}`)
+  }
+  return id
+}
+
 export async function restock(
   app: App,
   token: string,

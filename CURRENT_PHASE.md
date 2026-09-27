@@ -1,6 +1,6 @@
 # Current Phase
 
-M3 — Customer, Baki, Payment (Steps 48–61) — **in progress: Steps 48–57 built, Step 58 next**
+M3 — Customer, Baki, Payment (Steps 48–61) — **in progress: Steps 48–61 built, none of Steps 58–61 verified yet**
 
 M2 (Steps 35–47) is complete. M0 (Steps 1–22) is finished and verified locally; its one remaining check needs a push: CI green on GitHub. M1 (Steps 23–34) is built, with two checks still owed — listed under "Owed from M1" below.
 
@@ -10,7 +10,7 @@ M2 (Steps 35–47) is complete. M0 (Steps 1–22) is finished and verified local
 Build the customer and baki side end to end — the ledger rules first, then the tables, then the screens and the backend — as a ledger that is only ever added to: what a customer owes is the sum of their entries and never a number anyone edits.
 
 ## Current Step
-**Steps 48–57 are built. Step 58 (Postgres and the endpoints for baki) is next.**
+**Steps 48–57 are built and checked (below, unchanged from before). Steps 58–61 are built but not yet checked — implementation was done first, on the owner's instruction, with verification held for a separate, deliberate pass. See "Steps 58–61 — built, not yet verified" below.**
 
 - **Step 48 — the baki functions. Check passed.** `domain/Baki.kt`: `addCredit`, `receivePayment`, `reverseEntry`, `calculateBalance`, `isOverdue` (and `overdueAmount`, which it is defined by). 23 unit tests, 0 failures. Decisions and what was rejected: D041.
 - **Step 49 — the same cases on the backend. Check passed.** `server/src/domain/baki.ts` has the same functions. `fixtures/m3_baki.tsv` (27 cases) is read by both `BakiFixtureTest.kt` and `bakiFixture.test.ts`; the plan's own example, credit 500, payment 200, credit 100, gives 400 on both. **Proved by breaking it:** a changed fixture number failed both suites on that case, and a wrong settlement order (earliest-due instead of earliest-recorded) failed both suites on exactly the case written for it; restored, both pass. 55 new server tests, 0 failures.
@@ -22,6 +22,15 @@ Build the customer and baki side end to end — the ledger rules first, then the
 - **Step 55 — the Receive Payment screen. Check passed.** Same mechanism. A full-amount payment is one tap. Overpaying is recorded, shown as an advance, never blocked (D041).
 - **Step 56 — the exact balance fixture on the real screens. Check passed, on the phone.** Credit 500, receive 200, credit 100 more: `CustomerFlowTest.fiveHundredThenTwoHundredReceivedThenOneHundredMoreIsExactlyFourHundred` shows ৳400.00 on screen and confirms the stored entries sum to 40000 poisha.
 - **Step 57 — reverse one of those entries. Check passed, on the phone.** Each hand-written credit or payment has a small "Undo" link. It asks first, showing what the balance will become, then writes the opposite entry; the original stays in the ledger, marked. `BakiRepository.reverse` answers "already undone?" from stored rows in one transaction. **Proved by breaking it:** with that check removed, a second undo went through and eight undos at once wrote eight opposite entries instead of one; restored, all 9 repository tests pass. The plan's own check: 500, 200 received, 100 more is 400; undo the payment and the balance reads 600 with both entries still listed; undo the 100 and it reads 500. Decisions and what was rejected (swipe, long-press): D043.
+
+### Steps 58–61 — built, not yet verified
+
+- **Step 58 — Postgres and the endpoints for baki. Built.** Migration 005 widens `baki_entry_type_known` to all five types, adds `change_seq` to `baki_entry` for the shared pull order (D039), and adds `baki_entry_reversed_once_idx` — the database-level guarantee that an entry is undone once, between devices, that D043 deferred to this step. New endpoints: `POST /customers`, `GET /customers`, `GET /customers/:id`, `POST /baki/entries`, `POST /baki/entries/:id/reversal`, `GET /customers/:id/baki`. Sync: a hand-written entry now pushes and pulls through `ENTITY_BAKI_ENTRY`; `BakiRepository` on the phone now queues an outbox event for `addCredit`, `receivePayment` and `reverse`. Decisions: D044.
+- **Step 59 — UX pass. Built.** Reviewed Add Baki and Receive Payment for taps (2–3 to save either), touch targets, the keypad, and wording. One real gap found and fixed: `ClayChip` — used by the "full amount" quick-pick and every unit/toggle chip elsewhere in the app — had no minimum height, under the 48 dp target. It now enforces one. No new offline indicator was added, to stay consistent with the rest of the app, which has never had a per-screen one.
+- **Step 60 — bilingual completeness. Statically checked.** `values/strings.xml` and `values-en/strings.xml` hold the same key set (211 and 208, the 3-key gap being Bangla-only `translatable="false"` entries already known about), no empty values, and no hardcoded literal string was found reaching a screen in the customer/baki files.
+- **Step 61 — fonts. Statically checked.** Every place a customer's name is shown goes through the per-script renderer (`ClayUserText`/`scriptAwareText`, D010); every app label goes through `ClayText`, which already carries the current language's font.
+
+**None of Steps 58–61 has been run.** No `ci-local.sh`, no on-device suite, no manual walkthrough of the new endpoints, the sync wiring, or the touch-target fix — on purpose, per the owner's instruction to implement first and verify in a separate, approved pass. Tests were written alongside the code (`bakiValidation.test.ts`, `baki/routes.test.ts`, `customers/routes.test.ts`, `ledgerSync.test.ts` additions, `BakiRepositoryTest.kt` additions, `BakiSyncEndToEndTest.kt`), but "written" is not "passing" until they are actually run and the result read from the output, the same standard every earlier step in this file was held to.
 
 **Checked on this tree (2026-09-25), all from result files rather than "BUILD SUCCESSFUL":**
 - `ci-local.sh`, run in full on the final tree: **all 13 steps pass** - 198 Android unit tests and 272 server tests, 0 failures; Android lint "No issues found"; Spotless, ESLint, Prettier, the localization, Room-schema and JUnit-signature checks. For the record, one earlier full run failed the Lint step on a formatting violation in a test file I had edited by script after the last Spotless run. Reading the lint report afterwards also showed two warnings in my own new code (a Compose `modifier` parameter out of order, and a boxed `Long` state), which did not fail anything but were fixed so the report is clean again.
@@ -36,13 +45,10 @@ Build the customer and baki side end to end — the ledger rules first, then the
 
 **The on-phone suite uninstalls the app and wipes its data when it finishes.** The app was reinstalled with `installDebug`, empty; `phone-db.sh` confirms no database exists on the phone until it is opened once.
 
-**Not done here, on purpose:** the Postgres `baki_entry_type_known` check still allows only `credit_sale` and `reversal`. Nothing writes the other three types yet (no sync is queued for them — see D042), so nothing can fail. The migration that widens it belongs with Step 58.
-
-**Baki entered on these screens is not queued for sync yet, on purpose (D042):** the server has no endpoint for a standalone baki entry until Step 58. `BakiRepository.addCredit`/`receivePayment` write locally only.
+**Superseded by Step 58, below — kept here only as a record of what was true through Step 57:** at that point the Postgres `baki_entry_type_known` check still allowed only `credit_sale` and `reversal`, and `BakiRepository.addCredit`/`receivePayment`/`reverse` wrote locally only, queuing nothing, because the server had no endpoint yet. Migration 005 and the sync wiring now exist (Step 58) but have not been run against a real database yet — see "Steps 58–61 — built, not yet verified" above.
 
 **Known gap, not part of M3's steps:** two phones that are both offline can each create a customer with the same name, and the server accepts both, splitting that person's baki across two rows. Merging on the server is not safe by itself: `sale.customer_id` and `baki_entry.customer_id` are foreign keys, so a phone whose customer row was merged away would have its credit sale refused for good. A real fix needs the server to tell the phone which customer won and the phone to rewrite its own rows. This is D035's known limit reaching the sync path. The owner chose on 2026-09-23 to leave it for M3, where customers get phone numbers and a picker (D035), and it overlaps the two-device work in M4 (Steps 71–72).
 
-## M2 — how it finished
 ## M2 — how it finished
 Steps 43–47, the last of M2:
 
@@ -169,7 +175,7 @@ Done so far:
   - **CI now builds the real APK** (`assembleDebug`) and compiles the on-phone tests, instead of only compiling Kotlin.
 
 ## Allowed Right Now
-M3 (Steps 48–61 of `docs/PHASE_GUIDE.md`) — Steps 48–57 are built (above); what remains is the Postgres and endpoint work (Step 58), and the UX, bilingual and font passes (Steps 59–61). Finishing the two M1 checks above also stays in scope.
+M3 (Steps 48–61 of `docs/PHASE_GUIDE.md`) — all of it is built (above); what remains is verifying Steps 58–61 (below, under "Next"). Finishing the two M1 checks above also stays in scope.
 
 ## Not Allowed Right Now
 - Ask Hisab, forecasting, suggestions — M5/M6.
@@ -180,8 +186,8 @@ M3 (Steps 48–61 of `docs/PHASE_GUIDE.md`) — Steps 48–57 are built (above);
 Every check in Steps 35–47 passes — see `docs/PHASE_GUIDE.md` for each one individually. Done.
 
 ## Next
-1. **Step 58 — Postgres and the endpoints.** Widen `baki_entry_type_known` to all five types, add the baki table's shop-scoped endpoint(s), and start queueing `BakiRepository`'s writes (`addCredit`, `receivePayment` and now `reverse`) for sync (D042, D043). The server also needs its own guarantee that an entry is undone at most once.
-2. Steps 59–61: a UX pass over Add Baki, Receive Payment and Undo (tap counts, touch targets, an offline indicator; note the Undo link makes each ledger row taller), a bilingual completeness sweep of every M1–M3 screen, and a check that a mixed Bangla/English string renders both fonts correctly.
+1. **Verify Steps 58–61.** Run `ci-local.sh` in full; run the on-device suite (including the new `BakiRepositoryTest` additions and `BakiSyncEndToEndTest`, which needs the dev server up and `adb reverse tcp:3000 tcp:3000`); walk the new endpoints by hand (`POST /customers`, `POST /baki/entries`, `POST /baki/entries/:id/reversal`, `GET /customers/:id/baki`); confirm the `ClayChip` touch-target fix on the phone; do the actual Step 60 walkthrough (switch the whole app to English and back, screen by screen) rather than the static key-parity check alone.
+2. Once verified, M3 (Steps 48–61) is done, and the two owed M1 checks are the only thing keeping M1 from being fully closed out too.
 
 Two things M2 leaves for later, on purpose:
 - **Two devices reversing the same sale while offline.** The server refuses the second one (`ALREADY_REVERSED`), so the shops agree; the phone whose reversal was refused keeps its own copy until M4's conflict work (Steps 71–72) decides what a device does with a refused change.

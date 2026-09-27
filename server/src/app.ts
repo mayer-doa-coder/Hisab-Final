@@ -1,6 +1,8 @@
 import Fastify from 'fastify'
 import { registerAuthRoutes } from './modules/auth/routes.js'
 import { requireAuth } from './modules/auth/requireAuth.js'
+import { registerBakiRoutes } from './modules/baki/routes.js'
+import { registerCustomerRoutes } from './modules/customers/routes.js'
 import { registerInventoryRoutes } from './modules/inventory/routes.js'
 import { registerProductRoutes } from './modules/products/routes.js'
 import { registerSaleRoutes } from './modules/sales/routes.js'
@@ -17,8 +19,10 @@ export function buildApp() {
 
   registerAuthRoutes(app)
   registerProductRoutes(app)
+  registerCustomerRoutes(app)
   registerSaleRoutes(app)
   registerInventoryRoutes(app)
+  registerBakiRoutes(app)
   registerSyncRoutes(app)
 
   return app

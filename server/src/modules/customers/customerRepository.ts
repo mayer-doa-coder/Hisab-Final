@@ -28,9 +28,9 @@ function toCustomer(row: CustomerRow): Customer {
 type Queryable = Pick<PoolClient, 'query'>
 
 /**
- * Just enough of Customer for a credit sale to name who owes the money
- * (Steps 40 and 46). Editing, deleting and the customer endpoints are M3
- * (Step 58).
+ * Customers: enough for a credit sale to name who owes the money (Steps 40
+ * and 46), and for the customer endpoints to list, create and read them
+ * (Step 58). Editing and deleting a customer are not here yet.
  *
  * Every function takes shopId first and uses it in the WHERE clause; the
  * caller always passes the id from the session token, never from the request
@@ -71,17 +71,16 @@ export async function createCustomer(
 }
 
 /**
- * The customer with this name in this shop, created if this is the first
- * time — the same rule the phone uses (CustomerRepository.findOrCreate), so a
- * credit sale made through the API and one made on the phone treat a name
- * the same way. Matching ignores case and surrounding spaces.
+ * The customer with this name in this shop, if one exists. Matching ignores
+ * case and surrounding spaces — this is what stops a shop ending up with two
+ * rows for the same person because a name was typed with different spacing
+ * or capitals on two occasions (D035).
  */
-export async function findOrCreateCustomerByName(
+export async function findCustomerByName(
   shopId: string,
   name: string,
-  newId: string,
   db: Queryable = getPool(),
-): Promise<Customer> {
+): Promise<Customer | null> {
   const trimmed = name.trim()
   const { rows } = await db.query<CustomerRow>(
     `SELECT * FROM customer
@@ -90,10 +89,45 @@ export async function findOrCreateCustomerByName(
      LIMIT 1`,
     [shopId, trimmed],
   )
-  if (rows[0] !== undefined) return toCustomer(rows[0])
+  return rows[0] === undefined ? null : toCustomer(rows[0])
+}
+
+/**
+ * The customer with this name in this shop, created if this is the first
+ * time — the same rule the phone uses (CustomerRepository.findOrCreate), so a
+ * credit sale made through the API and one made on the phone treat a name
+ * the same way.
+ */
+export async function findOrCreateCustomerByName(
+  shopId: string,
+  name: string,
+  newId: string,
+  db: Queryable = getPool(),
+): Promise<Customer> {
+  const trimmed = name.trim()
+  const existing = await findCustomerByName(shopId, trimmed, db)
+  if (existing !== null) return existing
 
   await createCustomer(shopId, { id: newId, name: trimmed, phone: null }, db)
   return (await findCustomer(shopId, newId, db))!
+}
+
+/** Everyone this shop has recorded, by name or phone (Step 58). Matching ignores case. */
+export async function listCustomers(
+  shopId: string,
+  query: string,
+  limit = 200,
+): Promise<Customer[]> {
+  const q = query.trim()
+  const { rows } = await getPool().query<CustomerRow>(
+    `SELECT * FROM customer
+     WHERE shop_id = $1 AND deleted_at IS NULL
+       AND ($2 = '' OR name ILIKE '%' || $2 || '%' OR phone ILIKE '%' || $2 || '%')
+     ORDER BY lower(name) ASC
+     LIMIT $3`,
+    [shopId, q, limit],
+  )
+  return rows.map(toCustomer)
 }
 
 /** Customers changed after a cursor, oldest first, for a pull (Step 47). */

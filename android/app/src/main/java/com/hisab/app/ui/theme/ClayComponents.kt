@@ -255,6 +255,9 @@ fun ClayChip(
     Box(
         modifier =
             modifier
+                // 48 dp even though the pill reads shorter, so a small chip is
+                // still a real tap target, not just its visible outline.
+                .heightIn(min = 48.dp)
                 .shadow(
                     if (selected) 2.dp else 6.dp,
                     shape,
@@ -273,6 +276,7 @@ fun ClayChip(
                     shape = shape,
                 ).clickable(onClick = onClick)
                 .padding(horizontal = 16.dp, vertical = 10.dp),
+        contentAlignment = Alignment.Center,
     ) {
         ClayText(
             text = label,

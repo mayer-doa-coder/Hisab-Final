@@ -73,7 +73,7 @@ export function movementFromRow(row: MovementRow): StockMovement {
   }
 }
 
-function bakiFromRow(row: BakiRow): BakiEntry {
+export function bakiFromRow(row: BakiRow): BakiEntry {
   return {
     id: row.id as EntityId,
     customerId: row.customer_id as EntityId,
