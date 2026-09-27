@@ -12,6 +12,10 @@ espressoCore = "3.7.0"
 spotless = "8.10.2"
 ksp = "2.3.12"
 room = "2.8.5"
+# Background sync (M4, Steps 62-65): CoroutineWorker, network constraints,
+# and the on-disk work queue that survives the app being killed or the
+# phone restarting. Only needs minSdk 14, well under this project's 26.
+work = "2.10.0"
 # Only to settle a version clash: lifecycle pulls kotlinx-serialization 1.7.3,
 # Room 2.8.5's schema bundles need 1.8.1, and Gradle's consistent resolution
 # pushed 1.7.3 into the test classpath — where the migration test then died
@@ -43,6 +47,8 @@ androidx-room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = 
 androidx-room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room" }
 androidx-room-testing = { group = "androidx.room", name = "room-testing", version.ref = "room" }
 kotlinx-serialization-bom = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-bom", version.ref = "kotlinxSerialization" }
+androidx-work-runtime-ktx = { group = "androidx.work", name = "work-runtime-ktx", version.ref = "work" }
+androidx-work-testing = { group = "androidx.work", name = "work-testing", version.ref = "work" }
 
 [plugins]
 # No kotlin-android plugin: AGP 9's built-in Kotlin support replaces it.

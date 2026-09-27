@@ -1,16 +1,30 @@
 # Current Phase
 
-M3 — Customer, Baki, Payment (Steps 48–61) — **complete: every step built and checked**
+M4 — Real Sync (Steps 62–72) — **in progress: Steps 62–65 built and checked on the phone, 2026-09-27**
 
-M2 (Steps 35–47) is complete. M0 (Steps 1–22) is finished and verified locally; its one remaining check needs a push: CI green on GitHub. M1 (Steps 23–34) is built, with two checks still owed — listed under "Owed from M1" below.
+M3 (Steps 48–61) is complete. M2 (Steps 35–47) is complete. M0 (Steps 1–22) is finished and verified locally; its one remaining check needs a push: CI green on GitHub. M1 (Steps 23–34) is built and its two owed checks are closed.
 
 `docs/PHASE_GUIDE.md` has the exact steps, in order, each with its own check. This file just tracks which step you're on — the step list itself lives in one place only, so don't copy it here.
 
 ## Objective
-Build the customer and baki side end to end — the ledger rules first, then the tables, then the screens and the backend — as a ledger that is only ever added to: what a customer owes is the sum of their entries and never a number anyone edits.
+Make the sync that already exists (M0/M1, hardened through M3) survive real conditions instead of only a person tapping "sync now": a background trigger, retrying without giving up or spamming, surviving the app being killed, surviving the phone restarting, and — later in this milestone — what a device does with a change of its own the server refused.
 
 ## Current Step
-**All of M3 is built and checked. Steps 58–61 were implemented first and verified in a separate pass on 2026-09-27; what that pass found and fixed is below.**
+**Steps 62–65 are built and checked on the phone (Galaxy A15, Android 16), 2026-09-27.**
+
+- **Step 62 — background sync with WorkManager. Check passed.** `SyncWorker` (`CoroutineWorker`) runs one sync exactly the way `SyncViewModel.syncNow()` already does — `HisabDatabase.get(context)`, `SyncSettings`, `HttpSyncApi`, `SyncEngine.sync()` — so there is still only one place that knows how to assemble a sync. `SyncScheduler` enqueues a unique periodic request (`NetworkType.CONNECTED`, the 15-minute floor `PeriodicWorkRequest` itself enforces) as the durable backstop, and `HisabApplication` registers a `ConnectivityManager.NetworkCallback` that enqueues a one-time request the moment a network appears. **Proved on the phone, twice:** with the app signed in and backgrounded (launcher confirmed in focus throughout), wifi was turned off and back on; a real HTTP request reached the dev server 2–9 seconds later both times, read straight from the server's own request log, with `dumpsys jobscheduler` showing a fresh `#SyncWorker#` job start/stop each time. Decisions: D045.
+- **Step 63 — retry with backoff. Check passed.** `syncOutcomeFor` maps a plain `IOException`, or a `SyncException` whose status is not 401/403, to `Result.retry()`; a `NotSignedInException` or a 401/403 becomes `Result.success()`, so a dead session is answered once rather than retried forever. **Proved on the phone**: with the dev server stopped, two separate automatic `SyncWorker` job executions were observed in `dumpsys jobscheduler` about 31 seconds apart, with no wifi toggle or any other trigger between them — a real, unprompted backoff retry, not a simulated one. The server was then restarted and the very next automatic attempt succeeded.
+- **Step 64 — recovery after the app is killed. Check passed.** A product was added locally, "Sync now" was tapped, and the app was force-stopped (`am force-stop`) within the same second. Reopening: no crash, the product read back exactly once on the phone, the outbox showed nothing pending, the server held exactly one row at revision 1, and a follow-up sync pushed and pulled nothing new — nothing lost, nothing sent twice.
+- **Step 65 — recovery after the phone restarts. Check passed, with one honest device-specific note.** The phone was rebooted (`adb reboot`) with the periodic request already enqueued. After reboot, `dumpsys jobscheduler` showed WorkManager's own job counter had continued (`.../9`, not reset to `/0`) — the queue survived the reboot intact, at the data level, exactly as D045 says it should. Opening the app once (as a shopkeeper would on any normal day) let it resume immediately: the same job ran to completion and reached the server within seconds. **What did not happen on its own:** in roughly 15 minutes after reboot and one screen unlock, `BOOT_COMPLETED` did not visibly cause this Samsung device to relaunch the app by itself — consistent with One UI's own aggressive auto-start restrictions on apps not explicitly allow-listed by the phone's owner, the same class of behavior already recorded for screen sleep during the M3 device pass. This is a device setting, not a code defect: WorkManager's own `RescheduleReceiver` and the `RECEIVE_BOOT_COMPLETED` permission it needs are both present in the merged manifest, confirmed by inspection, and the queue's survival at the data level is proven above. A real shopkeeper's phone, opened at least once a day, is not affected by this gap.
+
+**One environment fact worth recording, not a product bug:** `adb reverse tcp:3000 tcp:3000` does not survive a phone reboot — it must be re-run before a post-reboot sync attempt can reach a laptop-hosted dev server. This only matters for testing over USB; a real deployment talks to a real server address, not `127.0.0.1`.
+
+**Checked on 2026-09-27, from result files and live device evidence, not "BUILD SUCCESSFUL":**
+- `ci-local.sh` in full, on the tree with Steps 62–65: 198 Android unit tests (across 21 classes) plus **5 new JVM tests for `syncOutcomeFor`** (203 total, across 22 classes), 0 failures; Android lint 0 issues; Spotless clean.
+- **On-phone suite: 210 tests, 0 failures, 0 errors, 0 skipped**, across 28 classes — up from 204/26 before this batch, the 6 new tests being `SyncWorkerTest` (2) and `SyncSchedulerTest` (4), all passing for real on the device.
+
+## M3 — Customer, Baki, Payment, done
+Complete: every step built and checked, 2026-09-27.
 
 - **Step 48 — the baki functions. Check passed.** `domain/Baki.kt`: `addCredit`, `receivePayment`, `reverseEntry`, `calculateBalance`, `isOverdue` (and `overdueAmount`, which it is defined by). 23 unit tests, 0 failures. Decisions and what was rejected: D041.
 - **Step 49 — the same cases on the backend. Check passed.** `server/src/domain/baki.ts` has the same functions. `fixtures/m3_baki.tsv` (27 cases) is read by both `BakiFixtureTest.kt` and `bakiFixture.test.ts`; the plan's own example, credit 500, payment 200, credit 100, gives 400 on both. **Proved by breaking it:** a changed fixture number failed both suites on that case, and a wrong settlement order (earliest-due instead of earliest-recorded) failed both suites on exactly the case written for it; restored, both pass. 55 new server tests, 0 failures.
@@ -191,12 +205,15 @@ Done so far:
   - **CI now builds the real APK** (`assembleDebug`) and compiles the on-phone tests, instead of only compiling Kotlin.
 
 ## Allowed Right Now
-M3 (Steps 48–61 of `docs/PHASE_GUIDE.md`) is complete and checked, and the two M1 checks it also owed are closed. M4 (Steps 62–72) is **not** started and needs the owner's go-ahead first.
+M4 (Steps 62–72 of `docs/PHASE_GUIDE.md`): Steps 62–65 are built and checked. Steps 66–72 (a visible sync-status string, and multi-device conflict handling) are not started and need the owner's go-ahead.
 
 ## Not Allowed Right Now
 - Ask Hisab, forecasting, suggestions — M5/M6.
-- Background sync, retries and multi-device convergence — M4. What exists now is a sync a person asks for.
+- Steps 66–72 of M4 (the sync-status string, and what a device does with a refused change) — not reached yet.
 - Full security hardening (rate limiting, token rotation, threat testing) — still M7.
+
+## Definition of Done for M4 so far
+Steps 62–65: every check passes — see `docs/PHASE_GUIDE.md` for each one individually. Done, 2026-09-27.
 
 ## Definition of Done for M3
 Every check in Steps 48–61 passes — see `docs/PHASE_GUIDE.md` for each one individually. Done, 2026-09-27.
@@ -205,9 +222,10 @@ Every check in Steps 48–61 passes — see `docs/PHASE_GUIDE.md` for each one i
 Every check in Steps 35–47 passes — see `docs/PHASE_GUIDE.md` for each one individually. Done.
 
 ## Next
-1. **Commit this work** — M3 is finished and checked, and nothing here has been committed yet.
+1. **Commit this work** — Steps 62–65 are finished and checked, and nothing here has been committed yet.
 2. **The one check still owed anywhere: M0 Step 22** — push, then confirm CI is green on GitHub and that the server job's "Unit tests" step reports the full count. It needs a push, so it cannot be closed from this machine alone.
-3. **M4 (Steps 62–72) on the owner's go-ahead** — background sync, retries and what a device does with a change the server refused. The two deferred items named below (a refused reversal on the losing phone, two offline phones creating the same customer name) both land there.
+3. **Steps 66–72 of M4, on the owner's go-ahead** — a visible sync-status string, and what a device does with a change of its own the server refused. The two deferred items named below (a refused reversal on the losing phone, two offline phones creating the same customer name) both land there.
+4. **Optional, not a code task:** if this phone is meant to auto-relaunch Hisab after a reboot with no one touching it, its owner needs to allow-list the app in Samsung's own battery/auto-start settings — see Step 65's note above. Not something `ci-local.sh` or any test can fix.
 
 Two things M2 leaves for later, on purpose:
 - **Two devices reversing the same sale while offline.** The server refuses the second one (`ALREADY_REVERSED`), so the shops agree; the phone whose reversal was refused keeps its own copy until M4's conflict work (Steps 71–72) decides what a device does with a refused change.

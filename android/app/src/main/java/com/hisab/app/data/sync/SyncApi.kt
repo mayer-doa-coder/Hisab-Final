@@ -59,8 +59,16 @@ interface SyncApi {
     ): PullResult
 }
 
+/**
+ * [statusCode] is null for a request that never got an HTTP response at all
+ * (a connection that failed outright uses a plain IOException instead — see
+ * [request]). Background sync (Step 63) uses it to tell a dead session
+ * (401/403, which retrying cannot fix) from a server or network problem
+ * (which retrying later can).
+ */
 class SyncException(
     message: String,
+    val statusCode: Int? = null,
 ) : IOException(message)
 
 /**
@@ -165,7 +173,7 @@ class HttpSyncApi(
                         ?.bufferedReader()
                         ?.use { it.readText() }
                         .orEmpty()
-                throw SyncException("$method $path failed with HTTP $code: $error")
+                throw SyncException("$method $path failed with HTTP $code: $error", statusCode = code)
             }
             return connection.inputStream.bufferedReader().use { it.readText() }
         } finally {
