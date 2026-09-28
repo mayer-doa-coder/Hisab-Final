@@ -1,6 +1,8 @@
 # Current Phase
 
-M4 — Real Sync (Steps 62–72) — **complete: every step built and checked, 2026-09-28**
+M5 — Ask Hisab (Steps 73–83) — **all the code is done and checked; Step 76 alone is outstanding, and waits on a writer who is not the rule developer**
+
+M4 (Steps 62–72) is complete: every step built and checked, 2026-09-28.
 
 M3 (Steps 48–61) is complete. M2 (Steps 35–47) is complete. M0 (Steps 1–22) is finished and verified locally; its one remaining check needs a push: CI green on GitHub. M1 (Steps 23–34) is built and its two owed checks are closed.
 
@@ -10,7 +12,33 @@ M3 (Steps 48–61) is complete. M2 (Steps 35–47) is complete. M0 (Steps 1–22
 Make the sync that already exists (M0/M1, hardened through M3) survive real conditions instead of only a person tapping "sync now": a background trigger, retrying without giving up or spamming, surviving the app being killed, surviving the phone restarting, and — later in this milestone — what a device does with a change of its own the server refused.
 
 ## Current Step
-**M4 is finished. Steps 62–72 are all built and all checked on the phone.** The one thing it does not cover, on purpose, is a second Android *screen* — see "A second Android device" below.
+**M5 is started. Steps 73, 74, 75 and 77 are done; Step 76 is deliberately not done and cannot be done by whoever writes the rules.**
+
+- **Step 73 — the normalization pipeline. Check passed.** `domain/language/TextNormalizer.kt`: Unicode (NFC) → case (root locale) → digits (reusing the money parser's `normalizeDigits`, D026) → tokens → Romanized folding. Every stage is kept rather than collapsed, which is what lets the check actually inspect them; the run over the plan's own examples is written down in `research/language/normalization-stages.md`. **Two real bugs came out of looking at that output**, both recorded in D047: Bangla vowel signs are combining marks, so `isLetterOrDigit` was tearing চিনি into চ and ন and dropping the vowels; and `kotoo` folded to `kotu` because "oo" is read as a sound before doubled letters collapse.
+- **Step 74 — alias matching. Check passed.** `domain/language/AliasMatcher.kt`. The check named in the plan — "coke" matching "Coca-Cola 500ml" because the shop set that alias — is a test, alongside Bangla names, Romanized aliases, two products in one question, and longest-match-first so "boro coke" beats "coke". 21 unit tests across the two files, 0 failures, no device needed.
+- **Step 75 — the development set. Check passed.** `research/language/dev/dev-set.jsonl`: 110 examples, every one carrying the seven fields the plan requires (`id`, `text`, `language_type`, `intent`, `entities`, `writer`, `set`). All five M5 intents and all three language types are covered; `language_type` is computed by the plan's fixed rule rather than judged. The generator is saved at `research/language/generate-dev-set.mjs`, as the plan asks. Sentences are deduplicated, so Step 83 cannot silently weight one twice.
+- **Step 76 — the held-out set. Not written, and not writable here.** The plan allows only a writer who is *not the rule developer* and has *not seen the system*. Steps 73–74 were built in this repository, which disqualifies their author from writing the sentences those rules will be measured against. Everything around the set is built instead: the Bangla situation list (`research/language/heldout/SITUATIONS.md`, situations only, no example sentences — the plan expressly permits the developer to write that), the row format, the labeling and second-labeler rules, and a README saying plainly why the folder is empty.
+- **Step 77 — the freeze. Tooling done and proved; the freeze itself waits on Step 76.** `scripts/freeze-heldout.mjs` hashes the file, verifies it again at Step 108, and checks it does not overlap the development set. All three behaviours were proved on a throwaway file — it hashes, it passes an unchanged file, it fails an edited one — and that test hash was deleted afterwards so the real freeze is not blocked. A root `.gitignore` now refuses sentence files in that folder, so the held-out text cannot be committed by accident.
+
+- **Steps 78–82 — the five intents. Checks passed, each against a real database.** `QuestionParser` reads a question into an intent and its entities without touching any data; `AskHisab` then looks the answer up. Every check the plan names is a test with real rows behind it: "coke stock koto" reading 22,000 after a restock and a damage (78); "rahim er baki koto" reading ৳400 from 500 − 200 + 100 while another customer's ৳990 stays out of it (79); overdue returning only the customer whose date has passed (80); today's total excluding yesterday's sale (81); a month's total matching ৳210 worked out by hand, with last month's sale excluded (82). Asking writes nothing, which is its own test. Decisions: D048.
+- **Step 83 — accuracy and latency, written down. Check passed.** Measured on the reference phone, not a laptop: **100% intent accuracy (110/110)**, 100% product, customer and period extraction, median **1.17 ms** per question, worst 3.51 ms, 31 KB of rule source. Numbers and method are in `research/language/step83-measurements.md`, together with the caveat that matters: the rules were tuned against this very set, so 100% here is a regression guard rather than evidence of accuracy. The figure that will mean something is Step 108's, against the held-out set. Amount extraction is reported as having no examples rather than given an invented percentage over zero cases.
+
+**Who can still write the held-out set:** the project owner may, **but only if they have not read `research/language/dev/dev-set.jsonl`, the `domain/language/` code, or any Ask Hisab output** — reading any of those disqualifies them under the plan's second rule. Either way the plan requires at least two writers and 300 sentences, so at least one more Bangla speaker is needed regardless. Give a writer `SITUATIONS.md` and nothing else.
+
+**Four real bugs that only running things found**, each one passing every hand-written test beforehand:
+1. **A Bangla-named customer could not be found by a Latin question** — "রহিম" against "rahim" — which failed Step 79's own check outright. Names are now indexed transliterated as well, in both vowel readings ("rahim" and "rohim").
+2. **Bangla and Banglish glue endings onto words**: "রহিমের", "mase". Exact matching missed both the customer and the month.
+3. **The Banglish fold `v → b` mangled English loanwords** — "overdue" became "oberdue" and stopped matching its own keyword.
+4. **The worst question took 24 ms** because grammatical endings were re-derived once per intent tested. Working them out once per question brought the median to 1.17 ms while doing strictly more work than before.
+
+Two Kotlin traps worth knowing, both hit here: ড়, ঢ় and য় are each **two** code points, so they cannot be `Char` literals; and a Bangla vowel sign is a combining mark, which `isLetterOrDigit` answers false for.
+
+**Checked on 2026-09-28:** `ci-local.sh` 13/13, exit 0 — **256 Android unit tests across 28 classes** (up from 211 before M5), 319 server tests, 0 failures; Android lint 0 issues; Spotless, ESLint, Prettier and the localization parity check clean.
+
+**A third shared-database test defect, found and fixed here.** `the sale list is newest first` asserted where its two sales sat in a list capped at `LIMIT 500`. The test database is kept between runs and has reached 541 sales in shop-1, 511 of them newer than the 2026-01-01 dates the test used — so both of its sales fell off the page, `indexOf` returned -1 for each, and `-1 < -1` failed for a reason that had nothing to do with ordering. It now dates its sales recently and asserts only their order relative to each other. This is the same family as M3's fixed-id tests and M4's `HisabDatabaseTest`: a test that quietly assumes a small or clean database and passes until it is neither.
+
+## M4 — Real Sync, done
+Complete: every step built and checked, 2026-09-28. The one thing it does not cover, on purpose, is a second Android *screen* — see "A second Android device" below.
 
 ### Steps 66–72 — the status line, the failure tests, and two devices
 
@@ -220,11 +248,18 @@ Done so far:
   - **CI now builds the real APK** (`assembleDebug`) and compiles the on-phone tests, instead of only compiling Kotlin.
 
 ## Allowed Right Now
-M4 (Steps 62–72 of `docs/PHASE_GUIDE.md`) is complete and checked. M5 needs the owner's go-ahead. The Secure Folder walkthrough below stays available whenever a second Android screen is wanted.
+Every step of M5 that can be done without other people is done. What remains is Step 76, which needs two Bangla speakers, not code. M6 (Steps 84–90: forecasting, the reorder engine, and the three intents that depend on them) needs the owner's go-ahead.
+
+Ask Hisab has no screen yet, by design: Steps 78–83 asked for the answers, not a place to type the question. A screen for it is not in the plan's M5 step list and would be building ahead of it.
 
 ## Not Allowed Right Now
-- Ask Hisab, forecasting, suggestions — M5/M6.
+- **Reading or writing the held-out set.** Whoever writes the rules may not write, edit, choose or read those sentences before Step 108. This is the one rule in the project that a well-meaning shortcut would quietly destroy — including by having a model write them, which would be the same rule developer twice over.
+- Forecasting and the reorder engine, including `GET_LOW_STOCK`, `GET_PREDICTED_STOCKOUT` and `GET_REORDER` — M6, Step 90.
 - Full security hardening (rate limiting, token rotation, threat testing) — still M7.
+
+## Definition of Done for M5
+Steps 73–75 and 77–83: every check passes. Done, 2026-09-28 — `ci-local.sh` 13/13 (256 Android unit tests, 319 server tests, 0 failures, lint 0 issues), the five intents checked against a real database, and Step 83's numbers written down in `research/language/step83-measurements.md`.
+Step 76: outstanding, and outstanding on purpose. M5 is not signed off until two eligible writers have produced the held-out set and it has been frozen.
 
 ## Definition of Done for M4
 Every check in Steps 62–72 passes — see `docs/PHASE_GUIDE.md` for each one individually. Done, 2026-09-28: `ci-local.sh` 13/13 (211 Android unit tests, 319 server tests, 0 failures, lint 0 issues), and the on-device suite at 219 tests, 0 failures, 0 skipped. Steps 71 and 72 are proved at the sync layer, against a real second client, with the second-screen caveat recorded below and in D046.
@@ -241,9 +276,9 @@ Every check in Steps 48–61 passes — see `docs/PHASE_GUIDE.md` for each one i
 Every check in Steps 35–47 passes — see `docs/PHASE_GUIDE.md` for each one individually. Done.
 
 ## Next
-1. **Commit this work** — M4 is finished and checked, and nothing in it has been committed yet.
-2. **The one check still owed anywhere: M0 Step 22** — push, then confirm CI is green on GitHub and that the server job's "Unit tests" step reports the full count. It needs a push, so it cannot be closed from this machine alone.
-3. **M5, on the owner's go-ahead.**
+1. **Find held-out writers (Step 76).** The only thing left in M5, and the one with the longest lead time because it needs people. Two Bangla speakers who have not seen the rules, the development set, or the app's answers. They get `research/language/heldout/SITUATIONS.md` and nothing else. Then `node scripts/freeze-heldout.mjs check-overlap <file>` and `hash <file>`, and commit only the hash.
+2. **Commit this work** — M4 and M5's code are checked and uncommitted.
+4. **The one check still owed anywhere: M0 Step 22** — push, then confirm CI is green on GitHub and that the server job's "Unit tests" step reports the full count. It needs a push, so it cannot be closed from this machine alone.
 5. **Optional, not a code task:** if this phone is meant to auto-relaunch Hisab after a reboot with no one touching it, its owner needs to allow-list the app in Samsung's own battery/auto-start settings — see Step 65's note above. Not something `ci-local.sh` or any test can fix.
 
 Two things M2 leaves for later, on purpose:

@@ -331,17 +331,24 @@ test('the sale list is newest first and includes reversals', async () => {
   const app = buildApp()
   const token = await loginToken(app)
   const rice = await makeProduct(app, token)
+
+  // Recent on purpose, an hour apart. The list is newest first and capped by
+  // `limit`, and the test database is kept between runs, so sales dated years
+  // in the past eventually sink below the cap and stop being returned at all.
+  const olderAt = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString()
+  const newerAt = new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString()
+
   const older = (
     await sell(app, token, {
       payment: 'cash',
-      occurredAt: '2026-01-01T08:00:00.000Z',
+      occurredAt: olderAt,
       lines: [{ productId: rice, quantity: 1000 }],
     })
   ).json().sale
   const newer = (
     await sell(app, token, {
       payment: 'cash',
-      occurredAt: '2026-01-01T09:00:00.000Z',
+      occurredAt: newerAt,
       lines: [{ productId: rice, quantity: 1000 }],
     })
   ).json().sale
@@ -349,13 +356,21 @@ test('the sale list is newest first and includes reversals', async () => {
   const sales = (
     await app.inject({ method: 'GET', url: '/sales?limit=500', headers: auth(token) })
   ).json().sales
-  const ids = sales.map((s: { sale: { id: string } }) => s.sale.id)
-  assert.ok(ids.indexOf(newer.sale.id) < ids.indexOf(older.sale.id))
-  assert.equal(
-    newer.sale.time.occurredAt,
-    '2026-01-01T09:00:00.000Z',
-    'when it happened is what the caller said',
+
+  // Only these two sales, in the order the list returned them. Asking where
+  // they sit in the whole list would depend on how much unrelated data the
+  // shared test database has built up: once more than `limit` sales exist
+  // that are newer than these, both fall off the page, `indexOf` returns -1
+  // for each, and the assertion fails for a reason that has nothing to do
+  // with ordering. That is exactly what happened once the table passed 500.
+  const ids: string[] = sales.map((s: { sale: { id: string } }) => s.sale.id)
+  const mine = ids.filter((id) => id === newer.sale.id || id === older.sale.id)
+  assert.deepEqual(
+    mine,
+    [newer.sale.id, older.sale.id],
+    'the newer sale comes before the older one',
   )
+  assert.equal(newer.sale.time.occurredAt, newerAt, 'when it happened is what the caller said')
 })
 
 // Step 46's check: the same shop-scoping rule as Product (Step 30).

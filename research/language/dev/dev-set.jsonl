@@ -1,0 +1,110 @@
+{"id":"dev-0001","text":"chini stock koto","language_type":"romanized","intent":"GET_STOCK","entities":[{"type":"product","surface":"chini","value":"sugar"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0002","text":"chini koyta ache","language_type":"romanized","intent":"GET_STOCK","entities":[{"type":"product","surface":"chini","value":"sugar"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0003","text":"চিনি স্টক কত","language_type":"bangla","intent":"GET_STOCK","entities":[{"type":"product","surface":"চিনি","value":"sugar"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0004","text":"চিনি কয়টা আছে","language_type":"bangla","intent":"GET_STOCK","entities":[{"type":"product","surface":"চিনি","value":"sugar"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0005","text":"চিনি stock koto","language_type":"mixed","intent":"GET_STOCK","entities":[{"type":"product","surface":"চিনি","value":"sugar"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0006","text":"chini কত আছে","language_type":"mixed","intent":"GET_STOCK","entities":[{"type":"product","surface":"chini","value":"sugar"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0007","text":"chal stock koto","language_type":"romanized","intent":"GET_STOCK","entities":[{"type":"product","surface":"chal","value":"rice"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0008","text":"chal koyta ache","language_type":"romanized","intent":"GET_STOCK","entities":[{"type":"product","surface":"chal","value":"rice"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0009","text":"চাল স্টক কত","language_type":"bangla","intent":"GET_STOCK","entities":[{"type":"product","surface":"চাল","value":"rice"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0010","text":"চাল কয়টা আছে","language_type":"bangla","intent":"GET_STOCK","entities":[{"type":"product","surface":"চাল","value":"rice"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0011","text":"চাল stock koto","language_type":"mixed","intent":"GET_STOCK","entities":[{"type":"product","surface":"চাল","value":"rice"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0012","text":"chal কত আছে","language_type":"mixed","intent":"GET_STOCK","entities":[{"type":"product","surface":"chal","value":"rice"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0013","text":"tel stock koto","language_type":"romanized","intent":"GET_STOCK","entities":[{"type":"product","surface":"tel","value":"oil"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0014","text":"tel koyta ache","language_type":"romanized","intent":"GET_STOCK","entities":[{"type":"product","surface":"tel","value":"oil"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0015","text":"তেল স্টক কত","language_type":"bangla","intent":"GET_STOCK","entities":[{"type":"product","surface":"তেল","value":"oil"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0016","text":"তেল কয়টা আছে","language_type":"bangla","intent":"GET_STOCK","entities":[{"type":"product","surface":"তেল","value":"oil"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0017","text":"তেল stock koto","language_type":"mixed","intent":"GET_STOCK","entities":[{"type":"product","surface":"তেল","value":"oil"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0018","text":"tel কত আছে","language_type":"mixed","intent":"GET_STOCK","entities":[{"type":"product","surface":"tel","value":"oil"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0019","text":"coke stock koto","language_type":"romanized","intent":"GET_STOCK","entities":[{"type":"product","surface":"coke","value":"coke"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0020","text":"coke koyta ache","language_type":"romanized","intent":"GET_STOCK","entities":[{"type":"product","surface":"coke","value":"coke"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0021","text":"কোক স্টক কত","language_type":"bangla","intent":"GET_STOCK","entities":[{"type":"product","surface":"কোক","value":"coke"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0022","text":"কোক কয়টা আছে","language_type":"bangla","intent":"GET_STOCK","entities":[{"type":"product","surface":"কোক","value":"coke"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0023","text":"কোক stock koto","language_type":"mixed","intent":"GET_STOCK","entities":[{"type":"product","surface":"কোক","value":"coke"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0024","text":"coke কত আছে","language_type":"mixed","intent":"GET_STOCK","entities":[{"type":"product","surface":"coke","value":"coke"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0025","text":"dal stock koto","language_type":"romanized","intent":"GET_STOCK","entities":[{"type":"product","surface":"dal","value":"dal"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0026","text":"dal koyta ache","language_type":"romanized","intent":"GET_STOCK","entities":[{"type":"product","surface":"dal","value":"dal"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0027","text":"ডাল স্টক কত","language_type":"bangla","intent":"GET_STOCK","entities":[{"type":"product","surface":"ডাল","value":"dal"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0028","text":"ডাল কয়টা আছে","language_type":"bangla","intent":"GET_STOCK","entities":[{"type":"product","surface":"ডাল","value":"dal"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0029","text":"ডাল stock koto","language_type":"mixed","intent":"GET_STOCK","entities":[{"type":"product","surface":"ডাল","value":"dal"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0030","text":"dal কত আছে","language_type":"mixed","intent":"GET_STOCK","entities":[{"type":"product","surface":"dal","value":"dal"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0031","text":"lobon stock koto","language_type":"romanized","intent":"GET_STOCK","entities":[{"type":"product","surface":"lobon","value":"salt"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0032","text":"lobon koyta ache","language_type":"romanized","intent":"GET_STOCK","entities":[{"type":"product","surface":"lobon","value":"salt"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0033","text":"লবণ স্টক কত","language_type":"bangla","intent":"GET_STOCK","entities":[{"type":"product","surface":"লবণ","value":"salt"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0034","text":"লবণ কয়টা আছে","language_type":"bangla","intent":"GET_STOCK","entities":[{"type":"product","surface":"লবণ","value":"salt"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0035","text":"লবণ stock koto","language_type":"mixed","intent":"GET_STOCK","entities":[{"type":"product","surface":"লবণ","value":"salt"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0036","text":"lobon কত আছে","language_type":"mixed","intent":"GET_STOCK","entities":[{"type":"product","surface":"lobon","value":"salt"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0037","text":"rahim er baki koto","language_type":"romanized","intent":"GET_CUSTOMER_BAKI","entities":[{"type":"customer","surface":"rahim","value":"rahim"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0038","text":"rahim koto taka pabo","language_type":"romanized","intent":"GET_CUSTOMER_BAKI","entities":[{"type":"customer","surface":"rahim","value":"rahim"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0039","text":"রহিমের বাকি কত","language_type":"bangla","intent":"GET_CUSTOMER_BAKI","entities":[{"type":"customer","surface":"রহিম","value":"rahim"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0040","text":"রহিম কত টাকা পাবো","language_type":"bangla","intent":"GET_CUSTOMER_BAKI","entities":[{"type":"customer","surface":"রহিম","value":"rahim"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0041","text":"রহিম er baki koto","language_type":"mixed","intent":"GET_CUSTOMER_BAKI","entities":[{"type":"customer","surface":"রহিম","value":"rahim"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0042","text":"rahim এর বাকি কত","language_type":"mixed","intent":"GET_CUSTOMER_BAKI","entities":[{"type":"customer","surface":"rahim","value":"rahim"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0043","text":"karim er baki koto","language_type":"romanized","intent":"GET_CUSTOMER_BAKI","entities":[{"type":"customer","surface":"karim","value":"karim"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0044","text":"karim koto taka pabo","language_type":"romanized","intent":"GET_CUSTOMER_BAKI","entities":[{"type":"customer","surface":"karim","value":"karim"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0045","text":"করিমের বাকি কত","language_type":"bangla","intent":"GET_CUSTOMER_BAKI","entities":[{"type":"customer","surface":"করিম","value":"karim"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0046","text":"করিম কত টাকা পাবো","language_type":"bangla","intent":"GET_CUSTOMER_BAKI","entities":[{"type":"customer","surface":"করিম","value":"karim"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0047","text":"করিম er baki koto","language_type":"mixed","intent":"GET_CUSTOMER_BAKI","entities":[{"type":"customer","surface":"করিম","value":"karim"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0048","text":"karim এর বাকি কত","language_type":"mixed","intent":"GET_CUSTOMER_BAKI","entities":[{"type":"customer","surface":"karim","value":"karim"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0049","text":"salma er baki koto","language_type":"romanized","intent":"GET_CUSTOMER_BAKI","entities":[{"type":"customer","surface":"salma","value":"salma"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0050","text":"salma koto taka pabo","language_type":"romanized","intent":"GET_CUSTOMER_BAKI","entities":[{"type":"customer","surface":"salma","value":"salma"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0051","text":"সালমাের বাকি কত","language_type":"bangla","intent":"GET_CUSTOMER_BAKI","entities":[{"type":"customer","surface":"সালমা","value":"salma"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0052","text":"সালমা কত টাকা পাবো","language_type":"bangla","intent":"GET_CUSTOMER_BAKI","entities":[{"type":"customer","surface":"সালমা","value":"salma"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0053","text":"সালমা er baki koto","language_type":"mixed","intent":"GET_CUSTOMER_BAKI","entities":[{"type":"customer","surface":"সালমা","value":"salma"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0054","text":"salma এর বাকি কত","language_type":"mixed","intent":"GET_CUSTOMER_BAKI","entities":[{"type":"customer","surface":"salma","value":"salma"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0055","text":"josim er baki koto","language_type":"romanized","intent":"GET_CUSTOMER_BAKI","entities":[{"type":"customer","surface":"josim","value":"josim"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0056","text":"josim koto taka pabo","language_type":"romanized","intent":"GET_CUSTOMER_BAKI","entities":[{"type":"customer","surface":"josim","value":"josim"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0057","text":"জসিমের বাকি কত","language_type":"bangla","intent":"GET_CUSTOMER_BAKI","entities":[{"type":"customer","surface":"জসিম","value":"josim"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0058","text":"জসিম কত টাকা পাবো","language_type":"bangla","intent":"GET_CUSTOMER_BAKI","entities":[{"type":"customer","surface":"জসিম","value":"josim"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0059","text":"জসিম er baki koto","language_type":"mixed","intent":"GET_CUSTOMER_BAKI","entities":[{"type":"customer","surface":"জসিম","value":"josim"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0060","text":"josim এর বাকি কত","language_type":"mixed","intent":"GET_CUSTOMER_BAKI","entities":[{"type":"customer","surface":"josim","value":"josim"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0061","text":"nasrin er baki koto","language_type":"romanized","intent":"GET_CUSTOMER_BAKI","entities":[{"type":"customer","surface":"nasrin","value":"nasrin"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0062","text":"nasrin koto taka pabo","language_type":"romanized","intent":"GET_CUSTOMER_BAKI","entities":[{"type":"customer","surface":"nasrin","value":"nasrin"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0063","text":"নাসরিনের বাকি কত","language_type":"bangla","intent":"GET_CUSTOMER_BAKI","entities":[{"type":"customer","surface":"নাসরিন","value":"nasrin"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0064","text":"নাসরিন কত টাকা পাবো","language_type":"bangla","intent":"GET_CUSTOMER_BAKI","entities":[{"type":"customer","surface":"নাসরিন","value":"nasrin"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0065","text":"নাসরিন er baki koto","language_type":"mixed","intent":"GET_CUSTOMER_BAKI","entities":[{"type":"customer","surface":"নাসরিন","value":"nasrin"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0066","text":"nasrin এর বাকি কত","language_type":"mixed","intent":"GET_CUSTOMER_BAKI","entities":[{"type":"customer","surface":"nasrin","value":"nasrin"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0067","text":"kar baki meyad periyeche","language_type":"romanized","intent":"GET_OVERDUE","entities":[],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0068","text":"কার বাকির মেয়াদ পেরিয়েছে","language_type":"bangla","intent":"GET_OVERDUE","entities":[],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0069","text":"ke ke taka dey nai","language_type":"romanized","intent":"GET_OVERDUE","entities":[],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0070","text":"কে কে টাকা দেয়নি","language_type":"bangla","intent":"GET_OVERDUE","entities":[],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0071","text":"overdue customer ke ke","language_type":"romanized","intent":"GET_OVERDUE","entities":[],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0072","text":"কোন কোন customer এর সময় শেষ","language_type":"mixed","intent":"GET_OVERDUE","entities":[],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0073","text":"meyad sesh hoyeche kar","language_type":"romanized","intent":"GET_OVERDUE","entities":[],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0074","text":"কার টাকা বাকি পড়ে আছে","language_type":"bangla","intent":"GET_OVERDUE","entities":[],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0075","text":"due date periye gese kader","language_type":"romanized","intent":"GET_OVERDUE","entities":[],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0076","text":"কাদের baki overdue","language_type":"mixed","intent":"GET_OVERDUE","entities":[],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0077","text":"ajke koto sell hoise","language_type":"romanized","intent":"GET_TODAY_SALES","entities":[],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0078","text":"aj koto bikri holo","language_type":"romanized","intent":"GET_TODAY_SALES","entities":[],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0079","text":"আজকে কত বিক্রি হয়েছে","language_type":"bangla","intent":"GET_TODAY_SALES","entities":[],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0080","text":"আজ কত টাকার বিক্রি","language_type":"bangla","intent":"GET_TODAY_SALES","entities":[],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0081","text":"ajke total sell koto","language_type":"romanized","intent":"GET_TODAY_SALES","entities":[],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0082","text":"আজকের sell কত","language_type":"mixed","intent":"GET_TODAY_SALES","entities":[],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0083","text":"aj koto taka ashlo","language_type":"romanized","intent":"GET_TODAY_SALES","entities":[],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0084","text":"আজকে কত আয় হলো","language_type":"bangla","intent":"GET_TODAY_SALES","entities":[],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0085","text":"today koto bikri","language_type":"romanized","intent":"GET_TODAY_SALES","entities":[],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0086","text":"আজ কত বিক্রি হইছে","language_type":"bangla","intent":"GET_TODAY_SALES","entities":[],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0087","text":"ei soptahe koto sell hoise","language_type":"romanized","intent":"GET_PERIOD_SALES","entities":[{"type":"period","surface":"ei soptahe","value":"this_week"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0088","text":"এই সপ্তাহে কত বিক্রি হয়েছে","language_type":"bangla","intent":"GET_PERIOD_SALES","entities":[{"type":"period","surface":"এই সপ্তাহে","value":"this_week"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0089","text":"এই সপ্তাহে koto bikri","language_type":"mixed","intent":"GET_PERIOD_SALES","entities":[{"type":"period","surface":"এই সপ্তাহে","value":"this_week"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0090","text":"ei soptahe এ কত টাকার বিক্রি","language_type":"mixed","intent":"GET_PERIOD_SALES","entities":[{"type":"period","surface":"ei soptahe","value":"this_week"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0091","text":"ei mase koto sell hoise","language_type":"romanized","intent":"GET_PERIOD_SALES","entities":[{"type":"period","surface":"ei mase","value":"this_month"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0092","text":"এই মাসে কত বিক্রি হয়েছে","language_type":"bangla","intent":"GET_PERIOD_SALES","entities":[{"type":"period","surface":"এই মাসে","value":"this_month"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0093","text":"এই মাসে koto bikri","language_type":"mixed","intent":"GET_PERIOD_SALES","entities":[{"type":"period","surface":"এই মাসে","value":"this_month"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0094","text":"ei mase এ কত টাকার বিক্রি","language_type":"mixed","intent":"GET_PERIOD_SALES","entities":[{"type":"period","surface":"ei mase","value":"this_month"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0095","text":"goto mase koto sell hoise","language_type":"romanized","intent":"GET_PERIOD_SALES","entities":[{"type":"period","surface":"goto mase","value":"last_month"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0096","text":"গত মাসে কত বিক্রি হয়েছে","language_type":"bangla","intent":"GET_PERIOD_SALES","entities":[{"type":"period","surface":"গত মাসে","value":"last_month"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0097","text":"গত মাসে koto bikri","language_type":"mixed","intent":"GET_PERIOD_SALES","entities":[{"type":"period","surface":"গত মাসে","value":"last_month"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0098","text":"goto mase এ কত টাকার বিক্রি","language_type":"mixed","intent":"GET_PERIOD_SALES","entities":[{"type":"period","surface":"goto mase","value":"last_month"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0099","text":"kalke koto sell hoise","language_type":"romanized","intent":"GET_PERIOD_SALES","entities":[{"type":"period","surface":"kalke","value":"yesterday"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0100","text":"গতকাল কত বিক্রি হয়েছে","language_type":"bangla","intent":"GET_PERIOD_SALES","entities":[{"type":"period","surface":"গতকাল","value":"yesterday"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0101","text":"গতকাল koto bikri","language_type":"mixed","intent":"GET_PERIOD_SALES","entities":[{"type":"period","surface":"গতকাল","value":"yesterday"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0102","text":"kalke এ কত টাকার বিক্রি","language_type":"mixed","intent":"GET_PERIOD_SALES","entities":[{"type":"period","surface":"kalke","value":"yesterday"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0103","text":"রহিমের baki কত","language_type":"mixed","intent":"GET_CUSTOMER_BAKI","entities":[{"type":"customer","surface":"রহিম","value":"rahim"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0104","text":"coke koyta ase","language_type":"romanized","intent":"GET_STOCK","entities":[{"type":"product","surface":"coke","value":"coke"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0105","text":"চিনি stock কত","language_type":"mixed","intent":"GET_STOCK","entities":[{"type":"product","surface":"চিনি","value":"sugar"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0106","text":"vai coke ta koyta ache dekhen to","language_type":"romanized","intent":"GET_STOCK","entities":[{"type":"product","surface":"coke","value":"coke"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0107","text":"একটু দেখেন তো চিনি কত আছে","language_type":"bangla","intent":"GET_STOCK","entities":[{"type":"product","surface":"চিনি","value":"sugar"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0108","text":"karim er kache koto poisa baki","language_type":"romanized","intent":"GET_CUSTOMER_BAKI","entities":[{"type":"customer","surface":"karim","value":"karim"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0109","text":"এই মাসে মোট কত বিক্রি হলো","language_type":"bangla","intent":"GET_PERIOD_SALES","entities":[{"type":"period","surface":"এই মাসে","value":"this_month"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0110","text":"kar kar baki meyad sesh","language_type":"romanized","intent":"GET_OVERDUE","entities":[],"writer":"W0-generator","set":"dev"}

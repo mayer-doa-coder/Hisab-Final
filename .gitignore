@@ -1,0 +1,14 @@
+# The held-out test sentences must never be committed (Step 77). Only their
+# SHA-256 hash is, in research/language/heldout/heldout-v1.sha256. The file
+# itself stays with a writer or labeler until the Step 108 experiment; if it
+# were in this repository the rule developer could read it, which is exactly
+# what freezing is meant to prevent. See docs/RESEARCH_PLAN.md.
+research/language/heldout/*.jsonl
+research/language/heldout/*.csv
+research/language/heldout/*.tsv
+research/language/heldout/v1/
+
+# Working state written by scripts/second-device.mjs when it stands in for a
+# second phone (Steps 71-72). It is one machine's sync position, not shared.
+second-device.state.json
+*.state.json

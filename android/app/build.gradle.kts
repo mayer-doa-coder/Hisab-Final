@@ -43,9 +43,13 @@ android {
     }
 
     // The exported Room schemas ship with the instrumented tests, so a
-    // migration test can check the real schema of each version.
+    // migration test can check the real schema of each version. The language
+    // development set ships the same way, so Step 83 can measure accuracy and
+    // latency against the real file on a real phone rather than a copy that
+    // could drift from it.
     sourceSets {
         getByName("androidTest").assets.srcDir("$projectDir/schemas")
+        getByName("androidTest").assets.srcDir("$projectDir/../../research/language/dev")
     }
 
     lint {
