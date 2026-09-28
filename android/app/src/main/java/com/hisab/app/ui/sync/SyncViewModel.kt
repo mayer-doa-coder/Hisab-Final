@@ -41,6 +41,30 @@ class SyncViewModel(
     var waitingToSend by mutableIntStateOf(0)
         private set
 
+    /** Changes the server would not take. They stay on the phone until Step 72 (D045). */
+    var refused by mutableIntStateOf(0)
+        private set
+
+    /**
+     * Whether this phone has ever finished a sync. Read from the saved cursor
+     * rather than from `lastReport`, so reopening the screen does not make a
+     * shop that has synced for weeks read as "never synced".
+     */
+    var hasSyncedBefore by mutableStateOf(false)
+        private set
+
+    /** What the screen shows, in one plain sentence (Step 66). */
+    val status: SyncStatus
+        get() =
+            syncStatusFor(
+                running = running,
+                needsSignIn = needsSignIn,
+                lastAttemptFailed = failure != null,
+                hasSyncedBefore = hasSyncedBefore,
+                waitingToSend = waitingToSend,
+                refused = refused,
+            )
+
     init {
         refreshWaitingCount()
     }
@@ -84,8 +108,12 @@ class SyncViewModel(
 
     private fun refreshWaitingCount() {
         viewModelScope.launch {
-            waitingToSend =
-                database.syncOutboxDao().withStatus(SyncOutboxEntity.STATUS_PENDING).size
+            val outbox = database.syncOutboxDao()
+            waitingToSend = outbox.withStatus(SyncOutboxEntity.STATUS_PENDING).size
+            refused =
+                outbox.withStatus(SyncOutboxEntity.STATUS_CONFLICT).size +
+                outbox.withStatus(SyncOutboxEntity.STATUS_REJECTED).size
+            hasSyncedBefore = database.syncMetadataDao().get() != null
         }
     }
 }

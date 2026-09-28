@@ -75,13 +75,7 @@ fun SyncScreen(
             )
 
             ClayCard {
-                ClayText(text = statusText(viewModel), size = 15)
-                ClayText(
-                    text = stringResource(R.string.sync_pending_count, viewModel.waitingToSend),
-                    size = 13,
-                    color = ClayColors.InkMuted,
-                    modifier = Modifier.padding(top = 6.dp),
-                )
+                ClayText(text = statusText(viewModel.status), size = 15)
             }
         }
 
@@ -94,28 +88,19 @@ fun SyncScreen(
     }
 }
 
+/**
+ * One plain sentence per status code (Step 66). The code decides what is
+ * said; this only looks up the words for the language on screen, so the two
+ * languages cannot drift apart into meaning different things (D011).
+ */
 @Composable
-private fun statusText(viewModel: SyncViewModel): String {
-    val report = viewModel.lastReport
-    return when {
-        viewModel.running -> {
-            stringResource(R.string.sync_running)
-        }
-
-        viewModel.needsSignIn -> {
-            stringResource(R.string.sync_not_signed_in)
-        }
-
-        viewModel.failure != null -> {
-            stringResource(R.string.sync_failed, viewModel.failure.orEmpty())
-        }
-
-        report != null -> {
-            stringResource(R.string.sync_result, report.pushed, report.pulled, report.conflicts)
-        }
-
-        else -> {
-            stringResource(R.string.sync_never)
-        }
+private fun statusText(status: SyncStatus): String =
+    when (status.code) {
+        SyncStatusCode.SYNC_RUNNING -> stringResource(R.string.sync_running)
+        SyncStatusCode.SYNC_NOT_SIGNED_IN -> stringResource(R.string.sync_not_signed_in)
+        SyncStatusCode.SYNC_CONFLICT -> stringResource(R.string.sync_status_conflict, status.refused)
+        SyncStatusCode.SYNC_UNREACHABLE -> stringResource(R.string.sync_status_unreachable)
+        SyncStatusCode.SYNC_PENDING -> stringResource(R.string.sync_status_pending, status.waitingToSend)
+        SyncStatusCode.SYNC_SYNCED -> stringResource(R.string.sync_status_synced)
+        SyncStatusCode.SYNC_NEVER -> stringResource(R.string.sync_never)
     }
-}

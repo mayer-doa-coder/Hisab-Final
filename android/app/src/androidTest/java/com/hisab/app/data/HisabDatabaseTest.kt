@@ -13,8 +13,15 @@ import java.time.Instant
 
 /**
  * In-memory Room databases (used by the DAO tests) don't exercise everything
- * a real on-disk database does. This builds the actual file-backed database
- * the app will use, to catch anything that only shows up there.
+ * a real on-disk database does. This builds a real file-backed database, to
+ * catch anything that only shows up there.
+ *
+ * Deliberately **not** `HisabDatabase.DATABASE_NAME`. This test deletes its
+ * file at both ends, and `HisabDatabase.get()` hands the whole test process
+ * one cached instance: deleting the app's real file out from under that
+ * instance leaves every later test in the run talking to a connection whose
+ * database is gone, which surfaces much later as "no such table". A file of
+ * its own proves exactly the same thing and cannot do that to anyone.
  */
 @RunWith(AndroidJUnit4::class)
 class HisabDatabaseTest {
@@ -22,11 +29,11 @@ class HisabDatabaseTest {
     fun realFileBackedDatabaseOpensSurvivesRestartAndKeepsData(): Unit =
         runBlocking {
             val context = InstrumentationRegistry.getInstrumentation().targetContext
-            context.deleteDatabase(HisabDatabase.DATABASE_NAME)
+            context.deleteDatabase(FILE_TEST_DB)
 
             val db1 =
                 Room
-                    .databaseBuilder(context, HisabDatabase::class.java, HisabDatabase.DATABASE_NAME)
+                    .databaseBuilder(context, HisabDatabase::class.java, FILE_TEST_DB)
                     .build()
 
             // Room opens the underlying connection lazily — .build() alone
@@ -52,13 +59,17 @@ class HisabDatabaseTest {
             // in-memory handle staying alive within one test.
             val db2 =
                 Room
-                    .databaseBuilder(context, HisabDatabase::class.java, HisabDatabase.DATABASE_NAME)
+                    .databaseBuilder(context, HisabDatabase::class.java, FILE_TEST_DB)
                     .build()
             val rows = db2.syncOutboxDao().all()
             assertEquals(1, rows.size)
             assertEquals("evt-persisted", rows[0].eventId)
             db2.close()
 
-            context.deleteDatabase(HisabDatabase.DATABASE_NAME)
+            context.deleteDatabase(FILE_TEST_DB)
         }
+
+    private companion object {
+        const val FILE_TEST_DB = "hisab-file-test.db"
+    }
 }

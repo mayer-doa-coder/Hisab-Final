@@ -1,6 +1,6 @@
 # Current Phase
 
-M4 — Real Sync (Steps 62–72) — **in progress: Steps 62–65 built and checked on the phone, 2026-09-27**
+M4 — Real Sync (Steps 62–72) — **complete: every step built and checked, 2026-09-28**
 
 M3 (Steps 48–61) is complete. M2 (Steps 35–47) is complete. M0 (Steps 1–22) is finished and verified locally; its one remaining check needs a push: CI green on GitHub. M1 (Steps 23–34) is built and its two owed checks are closed.
 
@@ -10,7 +10,22 @@ M3 (Steps 48–61) is complete. M2 (Steps 35–47) is complete. M0 (Steps 1–22
 Make the sync that already exists (M0/M1, hardened through M3) survive real conditions instead of only a person tapping "sync now": a background trigger, retrying without giving up or spamming, surviving the app being killed, surviving the phone restarting, and — later in this milestone — what a device does with a change of its own the server refused.
 
 ## Current Step
-**Steps 62–65 are built and checked on the phone (Galaxy A15, Android 16), 2026-09-27.**
+**M4 is finished. Steps 62–72 are all built and all checked on the phone.** The one thing it does not cover, on purpose, is a second Android *screen* — see "A second Android device" below.
+
+### Steps 66–72 — the status line, the failure tests, and two devices
+
+- **Step 66 — a simple sync status. Check passed, on the phone, in both languages.** `SyncStatusCode` (`SYNC_PENDING`, `SYNC_CONFLICT`, `SYNC_UNREACHABLE`, `SYNC_SYNCED`, `SYNC_NEVER`, `SYNC_RUNNING`, `SYNC_NOT_SIGNED_IN`) is picked by `syncStatusFor`, a plain function with 8 unit tests and no Android in it; the screen only looks up words for the code. The old technical lines are gone — "Sent 8, received 758, conflicts 0" and the raw text of whatever exception came back told a shopkeeper nothing they could act on. Seen on the phone: "সব হিসাব সার্ভারে পৌঁছে গেছে", and in the conflict case "সার্ভার আপনার ১ টি পরিবর্তন নেয়নি…" / "The server did not accept 1 of your changes…". Decisions: D046.
+- **Step 67 — a server crash mid-apply cannot leave things half-done. Check passed.** A batch is applied one event at a time, each claimed and committed on its own, so a server that dies half way has really written the first and really not written the second. The test pushes the first, then retries the *whole* batch: the first comes back `already-applied`, the second applies, and the running stock total reads 17,000 — not 27,000, not 10,000. Written against a total on purpose, so a double-apply would show up as a doubled number rather than something subtle.
+- **Step 68 — offline and network problems. Check passed**, each case on its own, against a stand-in server that fails exactly on cue: offline (queue untouched), connection lost mid-upload (kept, then sent exactly once when the network returns), timeout after the server already applied it (resent, recognised, queue clears, same event id both times), and a reply the phone cannot read (treated as a failure, nothing thrown away).
+- **Step 69 — repeats and restarts. Check passed.** Duplicate request, including two identical batches racing at the same instant on the server: one applies, one is told it already exists, the stock moved once. App killed before and after the ACK is the same case from the phone's side — the outbox row is only deleted once an answer has actually been read — and a fresh engine, standing for a restart, settles it exactly once. Server down for several tries loses nothing and delivers once when it returns. Phone restart is Step 65 above, already proved on the device.
+- **Step 70 — scale. Check passed.** 100 and 1,000 queued changes both go out and clear the queue, on the phone (the thousand took 12.5 s — slower, which is what the plan says to expect), and 1,000 events in one push all apply on the server, with a repeat of the same push recognised as already-applied and the total unmoved.
+- **Steps 71 and 72 — two devices, with one phone. Check passed at the sync layer, not at the second screen.** `scripts/second-device.mjs` is a real client, not a mock: its own device id, cursor, outbox and copy of the data, speaking the same two endpoints the phone speaks. Step 71: it created a product, pushed, and the phone pulled it down — both devices ended up with the same data. Step 72, run for real rather than scripted in one process: both devices held the product at revision 1, the laptop edited and synced first and won (revision 2, ৳40.00), and the phone's ৳99.00 edit made while offline came back refused rather than overwriting it — the phone kept its own copy and said so on screen. D046 records what this does not cover: a second Android app, with its own Room database and its own screens.
+
+**Verified on the phone, 2026-09-28: 219 tests, 0 failures, 0 errors, 0 skipped**, across 29 classes, with the dev server and `adb reverse tcp:3000 tcp:3000` up. The three `CustomerFlowTest` failures from the run before this one all pass again, which is what confirms the `HisabDatabaseTest` defect below was their real cause rather than flakiness. The count tells the same story: 219 is the earlier clean 210 plus this batch's 9 new tests, where the broken run had reported only 214 because the deleted database file was cutting the run short.
+
+**A real defect in the test suite itself, found by this batch and fixed.** `HisabDatabaseTest` deleted and rebuilt the app's *real* database file (`HisabDatabase.DATABASE_NAME`) at both ends of its run, while `HisabDatabase.get()` hands the whole test process one cached instance. Any later test using that instance could find its file gone, which is what produced `no such table: baki_entry` in `CustomerFlowTest`. It was latent before this batch and surfaced now because new tests changed which test builds the singleton first. It now uses a file of its own, which proves exactly the same thing and cannot do that to anyone. The same family as M3's "tests depended on a clean database" finding: a suite that passes in one order and not another.
+
+### Steps 62–65 — built and checked on the phone (Galaxy A15, Android 16), 2026-09-27
 
 - **Step 62 — background sync with WorkManager. Check passed.** `SyncWorker` (`CoroutineWorker`) runs one sync exactly the way `SyncViewModel.syncNow()` already does — `HisabDatabase.get(context)`, `SyncSettings`, `HttpSyncApi`, `SyncEngine.sync()` — so there is still only one place that knows how to assemble a sync. `SyncScheduler` enqueues a unique periodic request (`NetworkType.CONNECTED`, the 15-minute floor `PeriodicWorkRequest` itself enforces) as the durable backstop, and `HisabApplication` registers a `ConnectivityManager.NetworkCallback` that enqueues a one-time request the moment a network appears. **Proved on the phone, twice:** with the app signed in and backgrounded (launcher confirmed in focus throughout), wifi was turned off and back on; a real HTTP request reached the dev server 2–9 seconds later both times, read straight from the server's own request log, with `dumpsys jobscheduler` showing a fresh `#SyncWorker#` job start/stop each time. Decisions: D045.
 - **Step 63 — retry with backoff. Check passed.** `syncOutcomeFor` maps a plain `IOException`, or a `SyncException` whose status is not 401/403, to `Result.retry()`; a `NotSignedInException` or a 401/403 becomes `Result.success()`, so a dead session is answered once rather than retried forever. **Proved on the phone**: with the dev server stopped, two separate automatic `SyncWorker` job executions were observed in `dumpsys jobscheduler` about 31 seconds apart, with no wifi toggle or any other trigger between them — a real, unprompted backoff retry, not a simulated one. The server was then restarted and the very next automatic attempt succeeded.
@@ -205,15 +220,19 @@ Done so far:
   - **CI now builds the real APK** (`assembleDebug`) and compiles the on-phone tests, instead of only compiling Kotlin.
 
 ## Allowed Right Now
-M4 (Steps 62–72 of `docs/PHASE_GUIDE.md`): Steps 62–65 are built and checked. Steps 66–72 (a visible sync-status string, and multi-device conflict handling) are not started and need the owner's go-ahead.
+M4 (Steps 62–72 of `docs/PHASE_GUIDE.md`) is complete and checked. M5 needs the owner's go-ahead. The Secure Folder walkthrough below stays available whenever a second Android screen is wanted.
 
 ## Not Allowed Right Now
 - Ask Hisab, forecasting, suggestions — M5/M6.
-- Steps 66–72 of M4 (the sync-status string, and what a device does with a refused change) — not reached yet.
 - Full security hardening (rate limiting, token rotation, threat testing) — still M7.
 
-## Definition of Done for M4 so far
-Steps 62–65: every check passes — see `docs/PHASE_GUIDE.md` for each one individually. Done, 2026-09-27.
+## Definition of Done for M4
+Every check in Steps 62–72 passes — see `docs/PHASE_GUIDE.md` for each one individually. Done, 2026-09-28: `ci-local.sh` 13/13 (211 Android unit tests, 319 server tests, 0 failures, lint 0 issues), and the on-device suite at 219 tests, 0 failures, 0 skipped. Steps 71 and 72 are proved at the sync layer, against a real second client, with the second-screen caveat recorded below and in D046.
+
+### A second Android device, if one is ever wanted
+`scripts/second-device.mjs` covers Steps 71 and 72 at the sync layer, which is where the conflict policy lives. What it cannot show is a second *screen*. Two ways to get a real one, in order of how little they cost:
+1. **Samsung Secure Folder on this same handset.** It is a separate Android user (150 on this phone) with its own storage, so Hisab installed inside it is a genuinely separate instance — own database, own device id, own outbox. Add Hisab to Secure Folder from its own screen, sign in to the same shop, and the two instances are two devices for every purpose the plan cares about. Not yet tried here.
+2. **Any second Android phone**, the plain version of the same thing.
 
 ## Definition of Done for M3
 Every check in Steps 48–61 passes — see `docs/PHASE_GUIDE.md` for each one individually. Done, 2026-09-27.
@@ -222,10 +241,10 @@ Every check in Steps 48–61 passes — see `docs/PHASE_GUIDE.md` for each one i
 Every check in Steps 35–47 passes — see `docs/PHASE_GUIDE.md` for each one individually. Done.
 
 ## Next
-1. **Commit this work** — Steps 62–65 are finished and checked, and nothing here has been committed yet.
+1. **Commit this work** — M4 is finished and checked, and nothing in it has been committed yet.
 2. **The one check still owed anywhere: M0 Step 22** — push, then confirm CI is green on GitHub and that the server job's "Unit tests" step reports the full count. It needs a push, so it cannot be closed from this machine alone.
-3. **Steps 66–72 of M4, on the owner's go-ahead** — a visible sync-status string, and what a device does with a change of its own the server refused. The two deferred items named below (a refused reversal on the losing phone, two offline phones creating the same customer name) both land there.
-4. **Optional, not a code task:** if this phone is meant to auto-relaunch Hisab after a reboot with no one touching it, its owner needs to allow-list the app in Samsung's own battery/auto-start settings — see Step 65's note above. Not something `ci-local.sh` or any test can fix.
+3. **M5, on the owner's go-ahead.**
+5. **Optional, not a code task:** if this phone is meant to auto-relaunch Hisab after a reboot with no one touching it, its owner needs to allow-list the app in Samsung's own battery/auto-start settings — see Step 65's note above. Not something `ci-local.sh` or any test can fix.
 
 Two things M2 leaves for later, on purpose:
 - **Two devices reversing the same sale while offline.** The server refuses the second one (`ALREADY_REVERSED`), so the shops agree; the phone whose reversal was refused keeps its own copy until M4's conflict work (Steps 71–72) decides what a device does with a refused change.

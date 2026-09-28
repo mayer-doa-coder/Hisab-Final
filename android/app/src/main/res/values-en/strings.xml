@@ -63,11 +63,14 @@
     <string name="sync_password_hint">Only needed the first time you sign in</string>
     <string name="action_sync_now">Sync now</string>
     <string name="sync_running">Syncing…</string>
-    <string name="sync_never">Not synced yet</string>
-    <string name="sync_result">Sent %1$d, received %2$d, conflicts %3$d</string>
-    <string name="sync_failed">Sync failed: %1$s</string>
+    <string name="sync_never">Not synced yet. Everything is saved on this phone.</string>
     <string name="sync_not_signed_in">Enter your email and password first</string>
-    <string name="sync_pending_count">Waiting to send: %1$d</string>
+    <!-- Step 66: see the note in values/strings.xml. Same codes, same meaning,
+         different words. -->
+    <string name="sync_status_pending">Saved on this device — %1$d still waiting to sync</string>
+    <string name="sync_status_synced">Everything has reached the server</string>
+    <string name="sync_status_conflict">The server did not accept %1$d of your changes. Nothing is lost — everything is still saved on this phone.</string>
+    <string name="sync_status_unreachable">Saved on this device — could not reach the server</string>
 
     <!-- New Sale (M2, Steps 39-40) -->
     <string name="sale_new_title">New Sale</string>
