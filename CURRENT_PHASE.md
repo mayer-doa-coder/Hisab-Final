@@ -2,6 +2,8 @@
 
 M5 — Ask Hisab (Steps 73–83) — **all the code is done and checked; Step 76 alone is outstanding, and waits on a writer who is not the rule developer**
 
+**M6 — Smart Extras is started: Steps 84–87 are built (see "M6 — Steps 84–87" below). Step 88 onward is not started.**
+
 M4 (Steps 62–72) is complete: every step built and checked, 2026-09-28.
 
 M3 (Steps 48–61) is complete. M2 (Steps 35–47) is complete. M0 (Steps 1–22) is finished and verified locally; its one remaining check needs a push: CI green on GitHub. M1 (Steps 23–34) is built and its two owed checks are closed.
@@ -36,6 +38,20 @@ Two Kotlin traps worth knowing, both hit here: ড়, ঢ় and য় are eac
 **Checked on 2026-09-28:** `ci-local.sh` 13/13, exit 0 — **256 Android unit tests across 28 classes** (up from 211 before M5), 319 server tests, 0 failures; Android lint 0 issues; Spotless, ESLint, Prettier and the localization parity check clean.
 
 **A third shared-database test defect, found and fixed here.** `the sale list is newest first` asserted where its two sales sat in a list capped at `LIMIT 500`. The test database is kept between runs and has reached 541 sales in shop-1, 511 of them newer than the 2026-01-01 dates the test used — so both of its sales fell off the page, `indexOf` returned -1 for each, and `-1 < -1` failed for a reason that had nothing to do with ordering. It now dates its sales recently and asserts only their order relative to each other. This is the same family as M3's fixed-id tests and M4's `HisabDatabaseTest`: a test that quietly assumes a small or clean database and passes until it is neither.
+
+## M6 — Steps 84–87: forecasting data and methods (built and checked; the server half of `ci-local.sh` was not re-run)
+
+- **Step 84 — the demand pipeline.** `domain/forecast/DemandSeries.kt`, read from Room by `data/forecast/DemandRepository.kt`. Check ("feed it a known sale history, confirm the output") is a JVM test with a hand-written history, plus a Room test for the parts only a database can prove. Decisions: D049.
+- **Steps 85–87 — the methods.** Twelve methods behind one `fit(history)` / `forecast(horizon)` interface: the five the PRD requires plus running mean, seasonal EWMA, SBA, TSB, ADIDA and an equal-weight combination. Check (constant, zero, intermittent, short history) runs against **every** method from one list in `ForecastMethodTest`; Croston's intermittent-demand behaviour has its own tests. Decisions: D050; why each method is there, and what was left out, in `research/forecasting/METHODS.md`.
+
+**Verified on 2026-10-02:** Android unit tests **336 run, 0 failed, 0 skipped, 35 classes** (256 before; the 80 new ones are all in `domain/forecast/`). Android compile including the on-phone test sources, the JUnit method-signature check, the Room schema check, Spotless and Android lint (run on their own) all passed. Lint reports one informational note, `PluralsCandidate` in `values-en/strings.xml`, in a file this work did not touch.
+
+**Verified on the phone, 2026-10-02 (Galaxy A15, Android 16):** `DemandRepositoryTest` **8 run, 0 failed, 0 errors, 0 skipped**, read from the result XML. It covers reversal dating, the Dhaka day boundary, discontinued products, stockout marking from the ledger, and that asking writes nothing. Only that one class was run, not the whole device suite, and Hisab was not installed on the phone beforehand, so no app data was lost. **A real defect found by running it:** the first version used backtick sentences as test names, which compile but fail at the dexing step because minSdk 26 forbids spaces in method names (DEX before version 040); CI compiles on-phone tests and would not have caught it. The names are now camelCase, with the reason in the class's comment. Unit tests under `src/test` may keep sentence names.
+
+**Not verified:**
+- The server job of `scripts/ci-local.sh` was **not run** after this change. No server file was touched. The whole script was stopped at its 10-minute limit while starting the server job; Android lint and Spotless failed there only because they ran at the same moment in one Gradle call (a missing file inside Spotless's temporary folder), and both pass when run one after the other. If that recurs in `ci-local.sh` it is worth looking at.
+- **No method has been compared and none is declared best.** Every setting is an untuned starting point. Choosing among them is Step 88, on the metrics frozen in `RESEARCH_PLAN.md`.
+- The sources behind the method choices were read as search summaries and one abstract only; the full papers must be read before the paper cites them.
 
 ## M4 — Real Sync, done
 Complete: every step built and checked, 2026-09-28. The one thing it does not cover, on purpose, is a second Android *screen* — see "A second Android device" below.

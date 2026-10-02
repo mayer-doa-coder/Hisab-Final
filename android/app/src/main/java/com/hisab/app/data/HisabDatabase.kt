@@ -9,6 +9,7 @@ import com.hisab.app.data.baki.BakiEntryDao
 import com.hisab.app.data.baki.BakiEntryEntity
 import com.hisab.app.data.customer.CustomerDao
 import com.hisab.app.data.customer.CustomerEntity
+import com.hisab.app.data.forecast.DemandDao
 import com.hisab.app.data.product.ProductDao
 import com.hisab.app.data.product.ProductEntity
 import com.hisab.app.data.sale.SaleDao
@@ -50,6 +51,13 @@ abstract class HisabDatabase : RoomDatabase() {
     abstract fun customerDao(): CustomerDao
 
     abstract fun bakiEntryDao(): BakiEntryDao
+
+    /**
+     * Reads sales as daily demand (Step 84). It defines no table of its own —
+     * demand is derived from the sale ledger, never stored (the same rule stock
+     * follows, D020) — so adding it does not change the schema version.
+     */
+    abstract fun demandDao(): DemandDao
 
     companion object {
         const val DATABASE_NAME = "hisab.db"
