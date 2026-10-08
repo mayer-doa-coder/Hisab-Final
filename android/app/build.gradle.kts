@@ -42,6 +42,18 @@ android {
         compose = true
     }
 
+    // Bangla and English must both be in every install, never delivered on demand
+    // (CLAUDE.md: English is always available as a switch). With language splits
+    // on, an app bundle ships only the phone's own language, so a Bangla phone
+    // would have no English strings to switch to — and an answer rendered in the
+    // language of the question (ForecastAnswerText, D048) would silently fall back
+    // to the other one. Two small string files cost nothing to ship.
+    bundle {
+        language {
+            enableSplit = false
+        }
+    }
+
     // The exported Room schemas ship with the instrumented tests, so a
     // migration test can check the real schema of each version. The language
     // development set ships the same way, so Step 83 can measure accuracy and

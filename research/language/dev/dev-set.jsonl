@@ -108,3 +108,107 @@
 {"id":"dev-0108","text":"karim er kache koto poisa baki","language_type":"romanized","intent":"GET_CUSTOMER_BAKI","entities":[{"type":"customer","surface":"karim","value":"karim"}],"writer":"W0-generator","set":"dev"}
 {"id":"dev-0109","text":"এই মাসে মোট কত বিক্রি হলো","language_type":"bangla","intent":"GET_PERIOD_SALES","entities":[{"type":"period","surface":"এই মাসে","value":"this_month"}],"writer":"W0-generator","set":"dev"}
 {"id":"dev-0110","text":"kar kar baki meyad sesh","language_type":"romanized","intent":"GET_OVERDUE","entities":[],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0111","text":"ki ki kom ache","language_type":"romanized","intent":"GET_LOW_STOCK","entities":[],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0112","text":"kon kon jinis kom ache","language_type":"romanized","intent":"GET_LOW_STOCK","entities":[],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0113","text":"ki ki furiye ashche","language_type":"romanized","intent":"GET_LOW_STOCK","entities":[],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0114","text":"kon kon product sesh hoye ashche","language_type":"romanized","intent":"GET_LOW_STOCK","entities":[],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0115","text":"low stock ki ki","language_type":"romanized","intent":"GET_LOW_STOCK","entities":[],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0116","text":"kon jinis sesh hoye gese","language_type":"romanized","intent":"GET_LOW_STOCK","entities":[],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0117","text":"কোন কোন জিনিস কম আছে","language_type":"bangla","intent":"GET_LOW_STOCK","entities":[],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0118","text":"কী কী ফুরিয়ে আসছে","language_type":"bangla","intent":"GET_LOW_STOCK","entities":[],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0119","text":"কোন কোন পণ্যের স্টক কম","language_type":"bangla","intent":"GET_LOW_STOCK","entities":[],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0120","text":"কী কী শেষ হয়ে আসছে","language_type":"bangla","intent":"GET_LOW_STOCK","entities":[],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0121","text":"কোন জিনিস শেষ হয়ে গেছে","language_type":"bangla","intent":"GET_LOW_STOCK","entities":[],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0122","text":"কোন কোন product কম আছে","language_type":"mixed","intent":"GET_LOW_STOCK","entities":[],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0123","text":"low stock এর জিনিস কোনগুলো","language_type":"mixed","intent":"GET_LOW_STOCK","entities":[],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0124","text":"ki ki জিনিস ফুরিয়ে আসছে","language_type":"mixed","intent":"GET_LOW_STOCK","entities":[],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0125","text":"কোন stock কম","language_type":"mixed","intent":"GET_LOW_STOCK","entities":[],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0126","text":"stock sesh hoye ashche kon kon","language_type":"romanized","intent":"GET_LOW_STOCK","entities":[],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0127","text":"chini kobe sesh hobe","language_type":"romanized","intent":"GET_PREDICTED_STOCKOUT","entities":[{"type":"product","surface":"chini","value":"sugar"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0128","text":"চিনি কবে ফুরাবে","language_type":"bangla","intent":"GET_PREDICTED_STOCKOUT","entities":[{"type":"product","surface":"চিনি","value":"sugar"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0129","text":"chini koto din cholbe","language_type":"romanized","intent":"GET_PREDICTED_STOCKOUT","entities":[{"type":"product","surface":"chini","value":"sugar"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0130","text":"চিনি কতদিন চলবে","language_type":"bangla","intent":"GET_PREDICTED_STOCKOUT","entities":[{"type":"product","surface":"চিনি","value":"sugar"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0131","text":"চিনি stock kobe sesh hobe","language_type":"mixed","intent":"GET_PREDICTED_STOCKOUT","entities":[{"type":"product","surface":"চিনি","value":"sugar"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0132","text":"chini আর কত দিন চলবে","language_type":"mixed","intent":"GET_PREDICTED_STOCKOUT","entities":[{"type":"product","surface":"chini","value":"sugar"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0133","text":"chal kobe sesh hobe","language_type":"romanized","intent":"GET_PREDICTED_STOCKOUT","entities":[{"type":"product","surface":"chal","value":"rice"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0134","text":"চাল কবে ফুরাবে","language_type":"bangla","intent":"GET_PREDICTED_STOCKOUT","entities":[{"type":"product","surface":"চাল","value":"rice"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0135","text":"chal koto din cholbe","language_type":"romanized","intent":"GET_PREDICTED_STOCKOUT","entities":[{"type":"product","surface":"chal","value":"rice"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0136","text":"চাল কতদিন চলবে","language_type":"bangla","intent":"GET_PREDICTED_STOCKOUT","entities":[{"type":"product","surface":"চাল","value":"rice"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0137","text":"চাল stock kobe sesh hobe","language_type":"mixed","intent":"GET_PREDICTED_STOCKOUT","entities":[{"type":"product","surface":"চাল","value":"rice"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0138","text":"chal আর কত দিন চলবে","language_type":"mixed","intent":"GET_PREDICTED_STOCKOUT","entities":[{"type":"product","surface":"chal","value":"rice"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0139","text":"tel kobe sesh hobe","language_type":"romanized","intent":"GET_PREDICTED_STOCKOUT","entities":[{"type":"product","surface":"tel","value":"oil"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0140","text":"তেল কবে ফুরাবে","language_type":"bangla","intent":"GET_PREDICTED_STOCKOUT","entities":[{"type":"product","surface":"তেল","value":"oil"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0141","text":"tel koto din cholbe","language_type":"romanized","intent":"GET_PREDICTED_STOCKOUT","entities":[{"type":"product","surface":"tel","value":"oil"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0142","text":"তেল কতদিন চলবে","language_type":"bangla","intent":"GET_PREDICTED_STOCKOUT","entities":[{"type":"product","surface":"তেল","value":"oil"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0143","text":"তেল stock kobe sesh hobe","language_type":"mixed","intent":"GET_PREDICTED_STOCKOUT","entities":[{"type":"product","surface":"তেল","value":"oil"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0144","text":"tel আর কত দিন চলবে","language_type":"mixed","intent":"GET_PREDICTED_STOCKOUT","entities":[{"type":"product","surface":"tel","value":"oil"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0145","text":"coke kobe sesh hobe","language_type":"romanized","intent":"GET_PREDICTED_STOCKOUT","entities":[{"type":"product","surface":"coke","value":"coke"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0146","text":"কোক কবে ফুরাবে","language_type":"bangla","intent":"GET_PREDICTED_STOCKOUT","entities":[{"type":"product","surface":"কোক","value":"coke"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0147","text":"coke koto din cholbe","language_type":"romanized","intent":"GET_PREDICTED_STOCKOUT","entities":[{"type":"product","surface":"coke","value":"coke"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0148","text":"কোক কতদিন চলবে","language_type":"bangla","intent":"GET_PREDICTED_STOCKOUT","entities":[{"type":"product","surface":"কোক","value":"coke"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0149","text":"কোক stock kobe sesh hobe","language_type":"mixed","intent":"GET_PREDICTED_STOCKOUT","entities":[{"type":"product","surface":"কোক","value":"coke"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0150","text":"coke আর কত দিন চলবে","language_type":"mixed","intent":"GET_PREDICTED_STOCKOUT","entities":[{"type":"product","surface":"coke","value":"coke"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0151","text":"dal kobe sesh hobe","language_type":"romanized","intent":"GET_PREDICTED_STOCKOUT","entities":[{"type":"product","surface":"dal","value":"dal"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0152","text":"ডাল কবে ফুরাবে","language_type":"bangla","intent":"GET_PREDICTED_STOCKOUT","entities":[{"type":"product","surface":"ডাল","value":"dal"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0153","text":"dal koto din cholbe","language_type":"romanized","intent":"GET_PREDICTED_STOCKOUT","entities":[{"type":"product","surface":"dal","value":"dal"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0154","text":"ডাল কতদিন চলবে","language_type":"bangla","intent":"GET_PREDICTED_STOCKOUT","entities":[{"type":"product","surface":"ডাল","value":"dal"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0155","text":"ডাল stock kobe sesh hobe","language_type":"mixed","intent":"GET_PREDICTED_STOCKOUT","entities":[{"type":"product","surface":"ডাল","value":"dal"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0156","text":"dal আর কত দিন চলবে","language_type":"mixed","intent":"GET_PREDICTED_STOCKOUT","entities":[{"type":"product","surface":"dal","value":"dal"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0157","text":"lobon kobe sesh hobe","language_type":"romanized","intent":"GET_PREDICTED_STOCKOUT","entities":[{"type":"product","surface":"lobon","value":"salt"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0158","text":"লবণ কবে ফুরাবে","language_type":"bangla","intent":"GET_PREDICTED_STOCKOUT","entities":[{"type":"product","surface":"লবণ","value":"salt"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0159","text":"lobon koto din cholbe","language_type":"romanized","intent":"GET_PREDICTED_STOCKOUT","entities":[{"type":"product","surface":"lobon","value":"salt"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0160","text":"লবণ কতদিন চলবে","language_type":"bangla","intent":"GET_PREDICTED_STOCKOUT","entities":[{"type":"product","surface":"লবণ","value":"salt"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0161","text":"লবণ stock kobe sesh hobe","language_type":"mixed","intent":"GET_PREDICTED_STOCKOUT","entities":[{"type":"product","surface":"লবণ","value":"salt"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0162","text":"lobon আর কত দিন চলবে","language_type":"mixed","intent":"GET_PREDICTED_STOCKOUT","entities":[{"type":"product","surface":"lobon","value":"salt"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0163","text":"coke kobe furabe","language_type":"romanized","intent":"GET_PREDICTED_STOCKOUT","entities":[{"type":"product","surface":"coke","value":"coke"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0164","text":"চিনি কবে শেষ হবে","language_type":"bangla","intent":"GET_PREDICTED_STOCKOUT","entities":[{"type":"product","surface":"চিনি","value":"sugar"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0165","text":"chini ar koto din cholbe","language_type":"romanized","intent":"GET_PREDICTED_STOCKOUT","entities":[{"type":"product","surface":"chini","value":"sugar"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0166","text":"oil kobe shesh hoye jabe","language_type":"romanized","intent":"GET_PREDICTED_STOCKOUT","entities":[{"type":"product","surface":"oil","value":"oil"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0167","text":"চালের স্টক আর কতদিন চলবে","language_type":"bangla","intent":"GET_PREDICTED_STOCKOUT","entities":[{"type":"product","surface":"চাল","value":"rice"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0168","text":"ki ki kinte hobe","language_type":"romanized","intent":"GET_REORDER","entities":[],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0169","text":"kon kon jinis kinbo","language_type":"romanized","intent":"GET_REORDER","entities":[],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0170","text":"ki ki anbo","language_type":"romanized","intent":"GET_REORDER","entities":[],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0171","text":"what to buy","language_type":"romanized","intent":"GET_REORDER","entities":[],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0172","text":"কী কী কিনতে হবে","language_type":"bangla","intent":"GET_REORDER","entities":[],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0173","text":"কোন কোন জিনিস আনতে হবে","language_type":"bangla","intent":"GET_REORDER","entities":[],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0174","text":"আজ কী কিনব","language_type":"bangla","intent":"GET_REORDER","entities":[],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0175","text":"mal tulte hobe ki ki","language_type":"romanized","intent":"GET_REORDER","entities":[],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0176","text":"ki ki order korbo","language_type":"romanized","intent":"GET_REORDER","entities":[],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0177","text":"আজ কী কী অর্ডার করব","language_type":"bangla","intent":"GET_REORDER","entities":[],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0178","text":"কিনতে হবে এমন জিনিস কোনগুলো","language_type":"bangla","intent":"GET_REORDER","entities":[],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0179","text":"kon kon jinis order dite hobe","language_type":"romanized","intent":"GET_REORDER","entities":[],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0180","text":"chini koyta kinbo","language_type":"romanized","intent":"GET_REORDER","entities":[{"type":"product","surface":"chini","value":"sugar"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0181","text":"চিনি কতটা কিনব","language_type":"bangla","intent":"GET_REORDER","entities":[{"type":"product","surface":"চিনি","value":"sugar"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0182","text":"chini koto kinte hobe","language_type":"romanized","intent":"GET_REORDER","entities":[{"type":"product","surface":"chini","value":"sugar"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0183","text":"চিনি কিনতে হবে কত","language_type":"bangla","intent":"GET_REORDER","entities":[{"type":"product","surface":"চিনি","value":"sugar"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0184","text":"চিনি koyta anbo","language_type":"mixed","intent":"GET_REORDER","entities":[{"type":"product","surface":"চিনি","value":"sugar"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0185","text":"chal koyta kinbo","language_type":"romanized","intent":"GET_REORDER","entities":[{"type":"product","surface":"chal","value":"rice"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0186","text":"চাল কতটা কিনব","language_type":"bangla","intent":"GET_REORDER","entities":[{"type":"product","surface":"চাল","value":"rice"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0187","text":"chal koto kinte hobe","language_type":"romanized","intent":"GET_REORDER","entities":[{"type":"product","surface":"chal","value":"rice"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0188","text":"চাল কিনতে হবে কত","language_type":"bangla","intent":"GET_REORDER","entities":[{"type":"product","surface":"চাল","value":"rice"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0189","text":"চাল koyta anbo","language_type":"mixed","intent":"GET_REORDER","entities":[{"type":"product","surface":"চাল","value":"rice"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0190","text":"tel koyta kinbo","language_type":"romanized","intent":"GET_REORDER","entities":[{"type":"product","surface":"tel","value":"oil"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0191","text":"তেল কতটা কিনব","language_type":"bangla","intent":"GET_REORDER","entities":[{"type":"product","surface":"তেল","value":"oil"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0192","text":"tel koto kinte hobe","language_type":"romanized","intent":"GET_REORDER","entities":[{"type":"product","surface":"tel","value":"oil"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0193","text":"তেল কিনতে হবে কত","language_type":"bangla","intent":"GET_REORDER","entities":[{"type":"product","surface":"তেল","value":"oil"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0194","text":"তেল koyta anbo","language_type":"mixed","intent":"GET_REORDER","entities":[{"type":"product","surface":"তেল","value":"oil"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0195","text":"coke koyta kinbo","language_type":"romanized","intent":"GET_REORDER","entities":[{"type":"product","surface":"coke","value":"coke"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0196","text":"কোক কতটা কিনব","language_type":"bangla","intent":"GET_REORDER","entities":[{"type":"product","surface":"কোক","value":"coke"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0197","text":"coke koto kinte hobe","language_type":"romanized","intent":"GET_REORDER","entities":[{"type":"product","surface":"coke","value":"coke"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0198","text":"কোক কিনতে হবে কত","language_type":"bangla","intent":"GET_REORDER","entities":[{"type":"product","surface":"কোক","value":"coke"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0199","text":"কোক koyta anbo","language_type":"mixed","intent":"GET_REORDER","entities":[{"type":"product","surface":"কোক","value":"coke"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0200","text":"dal koyta kinbo","language_type":"romanized","intent":"GET_REORDER","entities":[{"type":"product","surface":"dal","value":"dal"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0201","text":"ডাল কতটা কিনব","language_type":"bangla","intent":"GET_REORDER","entities":[{"type":"product","surface":"ডাল","value":"dal"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0202","text":"dal koto kinte hobe","language_type":"romanized","intent":"GET_REORDER","entities":[{"type":"product","surface":"dal","value":"dal"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0203","text":"ডাল কিনতে হবে কত","language_type":"bangla","intent":"GET_REORDER","entities":[{"type":"product","surface":"ডাল","value":"dal"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0204","text":"ডাল koyta anbo","language_type":"mixed","intent":"GET_REORDER","entities":[{"type":"product","surface":"ডাল","value":"dal"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0205","text":"lobon koyta kinbo","language_type":"romanized","intent":"GET_REORDER","entities":[{"type":"product","surface":"lobon","value":"salt"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0206","text":"লবণ কতটা কিনব","language_type":"bangla","intent":"GET_REORDER","entities":[{"type":"product","surface":"লবণ","value":"salt"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0207","text":"lobon koto kinte hobe","language_type":"romanized","intent":"GET_REORDER","entities":[{"type":"product","surface":"lobon","value":"salt"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0208","text":"লবণ কিনতে হবে কত","language_type":"bangla","intent":"GET_REORDER","entities":[{"type":"product","surface":"লবণ","value":"salt"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0209","text":"লবণ koyta anbo","language_type":"mixed","intent":"GET_REORDER","entities":[{"type":"product","surface":"লবণ","value":"salt"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0210","text":"coke koyta order dibo","language_type":"romanized","intent":"GET_REORDER","entities":[{"type":"product","surface":"coke","value":"coke"}],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0211","text":"ajke koto order asche","language_type":"romanized","intent":"UNKNOWN","entities":[],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0212","text":"customer order koto","language_type":"romanized","intent":"UNKNOWN","entities":[],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0213","text":"kom dame chini","language_type":"romanized","intent":"UNKNOWN","entities":[],"writer":"W0-generator","set":"dev"}
+{"id":"dev-0214","text":"চিনির দাম কম","language_type":"bangla","intent":"UNKNOWN","entities":[],"writer":"W0-generator","set":"dev"}

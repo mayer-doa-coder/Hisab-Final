@@ -43,6 +43,11 @@ class DemandRepository(
     /**
      * Daily demand for every product this shop has ever sold, newest day last.
      *
+     * [today] is the last day included, and it is the *caller's* job to say which
+     * day that is: the current day is still being sold, so counting it reads a
+     * half-day as a whole day of low sales. Anything forecasting from this passes
+     * the last complete day (`AskHisab` passes yesterday).
+     *
      * [historyDays] bounds how far back the window starts — not a limit on
      * accuracy but on work: a shop trading for three years would otherwise
      * rebuild a thousand days per product every time a forecast is wanted, on a

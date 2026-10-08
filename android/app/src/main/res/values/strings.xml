@@ -245,4 +245,32 @@
     <string name="baki_undo_confirm">হ্যাঁ, ফিরিয়ে নিন</string>
     <string name="baki_undone_label">ফিরিয়ে নেওয়া হয়েছে</string>
     <string name="baki_undone_notice">%1$s-এর লেখা ফিরিয়ে নেওয়া হয়েছে</string>
+
+    <!-- Ask Hisab: stock forecasts and what to buy (M6, Steps 89-90).
+         The reply is in the language of the QUESTION, not of the app (D048), so
+         these are read through a context localized to that language. Every
+         number is formatted by the code and passed in as text (%s), so the
+         digits match the language and the words never choose them.
+         Same meaning as the English file, line for line. -->
+    <string name="ask_reorder_buy">%1$s: %2$s %3$s কিনুন।</string>
+    <string name="ask_reorder_none">%1$s: এখন কেনার দরকার নেই।</string>
+    <string name="ask_line_current_stock">এখন স্টক: %1$s %2$s</string>
+    <string name="ask_line_expected_demand">পরের %1$s দিনে সম্ভাব্য বিক্রি: %2$s %3$s</string>
+    <string name="ask_line_safety_margin">বাড়তি নিরাপত্তা (%1$s%%): %2$s %3$s</string>
+    <string name="ask_line_rounded_up">কেনার সুবিধার জন্য পূর্ণ করতে যোগ: +%1$s %2$s</string>
+    <string name="ask_line_negative_stock">খাতায় স্টক %1$s %2$s দেখাচ্ছে, তাই ০ ধরা হয়েছে। তাক গুনে স্টক ঠিক করে নিন।</string>
+    <string name="ask_stockout_already">%1$s: স্টক শেষ হয়ে গেছে।</string>
+    <string name="ask_stockout_in_days">%1$s: প্রায় %2$s দিনের মধ্যে শেষ হবে (%3$s নাগাদ)।</string>
+    <string name="ask_stockout_not_soon">%1$s: আগামী %2$s দিনের মধ্যে শেষ হওয়ার সম্ভাবনা নেই।</string>
+    <string name="ask_low_stock_header">পরের %1$s দিন চলবে না এমন পণ্য:</string>
+    <string name="ask_low_stock_item">%1$s: %2$s %3$s আছে — %4$s</string>
+    <string name="ask_low_stock_out">স্টক শেষ</string>
+    <string name="ask_low_stock_days">প্রায় %1$s দিন চলবে</string>
+    <string name="ask_low_stock_later">%1$s দিনের পরে শেষ হতে পারে</string>
+    <string name="ask_low_stock_none">এখন কোনো পণ্যের স্টক কম নয়।</string>
+    <string name="ask_reorder_list_header">কেনার তালিকা:</string>
+    <string name="ask_reorder_list_item">%1$s: %2$s %3$s</string>
+    <string name="ask_reorder_list_none">এখন কিছু কেনার দরকার নেই।</string>
+    <string name="ask_not_enough_data">%1$s: পূর্বাভাস দেওয়ার মতো বিক্রির তথ্য এখনো নেই (%2$s দিনের মধ্যে %3$s দিন বিক্রি হয়েছে)। এখন স্টক: %4$s %5$s।</string>
+    <string name="ask_not_enough_data_count">আরও %1$s টি পণ্যের বিক্রির তথ্য যথেষ্ট নয়, তাই সেগুলো ধরা হয়নি।</string>
 </resources>

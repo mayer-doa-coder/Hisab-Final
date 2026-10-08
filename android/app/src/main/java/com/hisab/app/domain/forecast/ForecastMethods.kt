@@ -78,8 +78,9 @@ private class CombinedForecast(
  * seasonal naive and a Croston-family method. Five more are here as research
  * candidates, each with its argument written on its own class: the running mean
  * (a baseline with O(1) state), seasonal EWMA, SBA and TSB (the Croston family's
- * two published corrections), ADIDA (temporal aggregation), and an equal-weight
- * combination. Markov-based forecasting is listed as optional by the PRD and is
+ * two published corrections), ADIDA (temporal aggregation), an equal-weight
+ * combination, and a selector that picks EWMA or SBA from the product's own
+ * demand shape. Markov-based forecasting is listed as optional by the PRD and is
  * deliberately not here — it needs a state space and a transition matrix per
  * product, which is the one thing in this area that would not be nearly free on
  * a cheap phone, and nothing in the comparison so far suggests the extra
@@ -112,7 +113,31 @@ object ForecastMethods {
             TsbMethod(),
             AdidaMethod(base = EwmaMethod(), bucketDays = SHORT_WINDOW_DAYS),
             CombinationMethod(listOf(MovingAverageMethod(SHORT_WINDOW_DAYS), EwmaMethod(), CrostonMethod.sba())),
+            ProfileSelectMethod(),
         )
+
+    /**
+     * The one method the app uses until real data says otherwise.
+     *
+     * It is not a free choice: it is the method the rule fixed in
+     * `research/forecasting/PROTOCOL.md` picks from the Step 88 results — the
+     * lowest mean MAE rank over the eight synthetic shapes, with methods within
+     * 0.25 rank points counted as tied and the smaller state winning. A unit
+     * test recomputes that rule and fails if this stops naming its answer, so
+     * the app's default cannot drift from the evidence without someone moving
+     * it on purpose.
+     *
+     * **Provisional.** It won on series this project generated, not on real
+     * shops, and the same table shows where it is weak: it over-forecasts a
+     * product that has stopped selling (`stopped_selling`) and lags a product
+     * whose sales are still climbing (`ramp_up`). It is replaced if the
+     * real-data comparison (RQ4, Step 105) disagrees.
+     *
+     * Aggregation to weeks suits what it is used for, which is a reorder over a
+     * seven-day lead time: the forecast it gives for those seven days is the
+     * smoothed weekly total itself, not seven separately rounded days.
+     */
+    fun appDefault(): ForecastMethod = AdidaMethod(base = EwmaMethod(), bucketDays = SHORT_WINDOW_DAYS)
 
     /** Everything, in a fixed order, so two runs of Step 88 produce the same table. */
     fun all(): List<ForecastMethod> = required() + candidates()

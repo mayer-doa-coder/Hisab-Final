@@ -2,7 +2,7 @@
 
 M5 — Ask Hisab (Steps 73–83) — **all the code is done and checked; Step 76 alone is outstanding, and waits on a writer who is not the rule developer**
 
-**M6 — Smart Extras is started: Steps 84–87 are built (see "M6 — Steps 84–87" below). Step 88 onward is not started.**
+**M6 — Smart Extras is under way: Steps 84–90 are built and checked on the laptop; the on-phone checks for Steps 88–90 are owed (phone was not connected). Steps 91–95 (suggestions, and "not enough data" everywhere) are not started.** See "M6 — Steps 88–90" below.
 
 M4 (Steps 62–72) is complete: every step built and checked, 2026-09-28.
 
@@ -39,19 +39,48 @@ Two Kotlin traps worth knowing, both hit here: ড়, ঢ় and য় are eac
 
 **A third shared-database test defect, found and fixed here.** `the sale list is newest first` asserted where its two sales sat in a list capped at `LIMIT 500`. The test database is kept between runs and has reached 541 sales in shop-1, 511 of them newer than the 2026-01-01 dates the test used — so both of its sales fell off the page, `indexOf` returned -1 for each, and `-1 < -1` failed for a reason that had nothing to do with ordering. It now dates its sales recently and asserts only their order relative to each other. This is the same family as M3's fixed-id tests and M4's `HisabDatabaseTest`: a test that quietly assumes a small or clean database and passes until it is neither.
 
-## M6 — Steps 84–87: forecasting data and methods (built and checked; the server half of `ci-local.sh` was not re-run)
+## M6 — Steps 88–90: the comparison, the reorder engine, and three new questions (built and checked, laptop and phone)
+
+Steps 84–87 (the demand pipeline and twelve methods) are below this block, unchanged. This block is what Steps 88–90 added.
+
+- **Step 88 — walk-forward comparison.** `research/forecasting/PROTOCOL.md` (written before the run), results in `research/forecasting/results/step88-synthetic-v1/` (`results.csv`, `seed-stability.csv`, `REPORT.md`, `ANALYSIS.md`, `latency-jvm.csv`, `SHA256SUMS`), data in `research/forecasting/synthetic/v1/` with its dataset card. 13 methods × 800 synthetic series × the 3 folds of the phase guide, MAE, MASE, stockout and overstock outcomes, latency and state size for every one. **Check passed on the laptop** (a table with real numbers for every method). A thirteenth method, the profile selector, was added first. Decisions: D051.
+- **Step 89 — the reorder engine.** `domain/forecast/Reorder.kt` and `InventoryAdvisor.kt`. `buy = expected demand + safety margin − stock`, rounded up to a buyable amount, with a recommendation type that refuses to exist unless `stock + buy = demand + margin + rounding`. **Check passed:** the PRD's own example (stock 4, demand 14, buy 13) and a property test over 1,960 combinations. The sentence is built in Bangla and English in `ui/ask/ForecastAnswerText.kt` from the same fields. Decisions: D052.
+- **Step 90 — `GET_LOW_STOCK`, `GET_PREDICTED_STOCKOUT`, `GET_REORDER`.** Parser rules, answers in `AskHisab`, wording in both resource files, 104 new development-set examples (110 → 214, existing ids unchanged). A product with too little history gets an honest "not enough data" answer carrying what was counted, never a made-up number. **Check passed, end to end on the Galaxy A15 against a real Room database** (`AskForecastTest`, 17 tests): each question returns a sensible answer in Latin, Bangla and mixed writing, the figures were worked out by hand beforehand, and asking writes nothing.
+
+**The default method, and why it is only provisional.** By the rule fixed before the run, the app uses `adida(ewma(a=0.3),m=7)`. It ties with `moving_average(w=28)` (mean rank 5.03 and 5.04 over ten seeds, spread 0.3 to 0.4). The same table shows it over-forecasts a product that has stopped selling and lags a new product's climb. The series are synthetic and were designed by the person who wrote the methods, so none of this says what is best for a real shop. Read `ANALYSIS.md`, not just the ranking. **One decision is open before the real-data run: whether MAE or the stockout outcome is the paper's primary metric** — the data shows they pick different methods on intermittent demand.
+
+**Verified on 2026-10-08 (read from result files, not from "BUILD SUCCESSFUL"):**
+- **Laptop:** Android unit tests **420 run, 0 failed, 0 skipped, 44 classes**, forced to re-run so nothing came from cache. Debug APK and test APK build and dex. Localization (230 keys, Bangla and English in step), JUnit method-signature and Room schema checks pass; Spotless passes; Android lint reports one informational note, `PluralsCandidate`, on the existing `sync_status_pending` string, which this work did not write. **Server: 319 tests, 0 failed**, plus build, migrate, lint and format check.
+- **Phone (Galaxy A15, Android 16), the whole on-device suite on the final code: 258 tests across 34 classes, 0 failed, 0 errors, 0 skipped**, with the dev server and `adb reverse` up so the sync end-to-end tests really ran. Includes `AskForecastTest` (17), `AskHisabTest` (11, the old five intents), `DemandRepositoryTest` (8), `ForecastLatencyTest` (2), `DevSetMeasurementTest` (1).
+- **An independent re-implementation** of all 13 methods and the walk-forward scorer, written separately in Python as a second implementation of the same written specification (by the same author, so not a blind check), was run on the saved series. It agrees with the saved `results.csv` on all 104 method-and-shape cells and all 7 metrics, to within the 4-decimal rounding (largest difference 5e-5). This catches a bug in the Kotlin but not a shared misreading of the specification.
+- **Phone latency, measured:** every method takes between about 1.4 and 50 µs per product (two runs recorded in `research/forecasting/results/step88-synthetic-v1/latency-phone.md`); a 200-product shop with the default method takes 3 to 5 ms. The first version of this test was wrong (a JIT warm-up artifact made the first methods look slow) and was fixed. These are not the frozen low-end reference device (Tecno Spark Go 2), which has not been used.
+
+**Bugs found and fixed by this verification pass, each of which every earlier check had missed:**
+1. **Parser:** "ajke koto order asche" (how many customer orders came) was answered as a *what-to-buy* question, because the bare word "order" counted as buying; and "kom dame chini" (sugar at a lower price) was answered as a stockout question. Found by trying 36 sentences outside the development set. "order" now needs "korbo / dibo / dite…", and a price word rules "kom" out. Both are now tests and development-set examples.
+2. **`ANALYSIS.md` overstated three things**, found by checking each claim against the data: the selector does not equal EWMA on `ramp_up` (2.465 vs 2.461); the leaders' tie does not extend to `ewma` (1.4 rank points behind, more than the spread); and the spike week accounts for all of the festival shortfall (every method 66% short in that fold, 0% in the others), with EWMA then over-forecasting by 181% the week after.
+3. **The PRD example is matched only in part.** The PRD shows margin 3 and no rounding line (4 + 13 = 14 + 3). The engine buys the same 13 but shows margin 2.8 plus a separate 0.2 "rounded up" line. Recorded in D052; the test is renamed to say what it checks.
+4. **Phone-latency test artifact** (above), and a wrong claim that lint's note was in a file this work did not touch.
+
+**A pre-existing flaky test, not caused by this work:** `HomeScreenTest.languageButtonSwitchesToEnglishAndBack` fails intermittently (the Activity restarts when the language changes and the test races it). It failed in 2 of 5 runs here, and in **2 of 4 runs on the committed baseline `62143c2` with none of Steps 88–90 present**, so it is not new. It passed in the final full run. It is not fixed, because it is outside this task; it will make a full device run red now and then.
+
+**One build setting added because lint found a real problem in the new code:** `bundle.language.enableSplit = false` in `app/build.gradle.kts`. If the app is ever shipped as a Play app bundle, language splits can leave a phone without the other language's resources, so a reply in the question's language would silently fall back.
+
+**Still not verified:**
+- **The Step 83 numbers were re-measured on 214 examples** (100% intent, product, customer and period; 334 µs median) and appended to `research/language/step83-measurements.md`, with the caution that 100% on a development set is a regression guard and that this round's own probe found real misreadings. The latency is not comparable with the earlier 1.17 ms and is not an improvement.
+- The server job was run step by step (above), not as one `scripts/ci-local.sh` run; that script's single invocation exceeds the tool's 10-minute limit.
+- **Nothing here has run on GitHub CI.** The user has committed `62143c2` (Steps 84–87) but nothing from Steps 88–90; the CI result for that commit has not been read.
+- The low-end reference device (D028) has not been used for anything.
+
+**Known limits of what was built, stated so they are not rediscovered:**
+- Ask Hisab still has no screen, and the five M5 answers still have no wording; `ForecastAnswerText` returns null for them. A settings screen for lead time and safety margin does not exist either, so both are parameters (defaults 7 days and 20%, unvalidated assumptions). Neither screen is in the plan's M5 or M6 steps.
+- The history needed before the app will forecast (14 days, 3 days with a sale) is a provisional round number. **Step 95 is not done:** the "not enough data" policy exists for forecasts and reorders, but Step 95 also covers suggestions (Steps 91–94, not started) and every screen, and its own test cases were not run as a set.
+- The sources behind the method choices were read as search summaries and one abstract only; the full papers must be read before the paper cites them.
+
+## M6 — Steps 84–87: forecasting data and methods (built and checked)
 
 - **Step 84 — the demand pipeline.** `domain/forecast/DemandSeries.kt`, read from Room by `data/forecast/DemandRepository.kt`. Check ("feed it a known sale history, confirm the output") is a JVM test with a hand-written history, plus a Room test for the parts only a database can prove. Decisions: D049.
-- **Steps 85–87 — the methods.** Twelve methods behind one `fit(history)` / `forecast(horizon)` interface: the five the PRD requires plus running mean, seasonal EWMA, SBA, TSB, ADIDA and an equal-weight combination. Check (constant, zero, intermittent, short history) runs against **every** method from one list in `ForecastMethodTest`; Croston's intermittent-demand behaviour has its own tests. Decisions: D050; why each method is there, and what was left out, in `research/forecasting/METHODS.md`.
-
-**Verified on 2026-10-02:** Android unit tests **336 run, 0 failed, 0 skipped, 35 classes** (256 before; the 80 new ones are all in `domain/forecast/`). Android compile including the on-phone test sources, the JUnit method-signature check, the Room schema check, Spotless and Android lint (run on their own) all passed. Lint reports one informational note, `PluralsCandidate` in `values-en/strings.xml`, in a file this work did not touch.
-
-**Verified on the phone, 2026-10-02 (Galaxy A15, Android 16):** `DemandRepositoryTest` **8 run, 0 failed, 0 errors, 0 skipped**, read from the result XML. It covers reversal dating, the Dhaka day boundary, discontinued products, stockout marking from the ledger, and that asking writes nothing. Only that one class was run, not the whole device suite, and Hisab was not installed on the phone beforehand, so no app data was lost. **A real defect found by running it:** the first version used backtick sentences as test names, which compile but fail at the dexing step because minSdk 26 forbids spaces in method names (DEX before version 040); CI compiles on-phone tests and would not have caught it. The names are now camelCase, with the reason in the class's comment. Unit tests under `src/test` may keep sentence names.
-
-**Not verified:**
-- The server job of `scripts/ci-local.sh` was **not run** after this change. No server file was touched. The whole script was stopped at its 10-minute limit while starting the server job; Android lint and Spotless failed there only because they ran at the same moment in one Gradle call (a missing file inside Spotless's temporary folder), and both pass when run one after the other. If that recurs in `ci-local.sh` it is worth looking at.
-- **No method has been compared and none is declared best.** Every setting is an untuned starting point. Choosing among them is Step 88, on the metrics frozen in `RESEARCH_PLAN.md`.
-- The sources behind the method choices were read as search summaries and one abstract only; the full papers must be read before the paper cites them.
+- **Steps 85–87 — the methods.** Twelve methods behind one `fit(history)` / `forecast(horizon)` interface: the five the PRD requires plus running mean, seasonal EWMA, SBA, TSB, ADIDA and an equal-weight combination (Step 88 added a thirteenth). Check (constant, zero, intermittent, short history) runs against **every** method from one list in `ForecastMethodTest`; Croston's intermittent-demand behaviour has its own tests. Decisions: D050; why each method is there, and what was left out, in `research/forecasting/METHODS.md`.
+- **Verified for these steps on 2026-10-02 and re-run on 2026-10-08:** `DemandRepositoryTest` on the Galaxy A15, **8 run, 0 failed**, read from the result XML both times. A real defect found by running it: the first version used backtick sentences as on-phone test names, which compile but fail at the dexing step because minSdk 26 forbids spaces in method names; CI compiles on-phone tests and would not have caught it. Names are camelCase now, with the reason in the class comment.
 
 ## M4 — Real Sync, done
 Complete: every step built and checked, 2026-09-28. The one thing it does not cover, on purpose, is a second Android *screen* — see "A second Android device" below.
@@ -264,13 +293,14 @@ Done so far:
   - **CI now builds the real APK** (`assembleDebug`) and compiles the on-phone tests, instead of only compiling Kotlin.
 
 ## Allowed Right Now
-Every step of M5 that can be done without other people is done. What remains is Step 76, which needs two Bangla speakers, not code. M6 (Steps 84–90: forecasting, the reorder engine, and the three intents that depend on them) needs the owner's go-ahead.
+Every step of M5 that can be done without other people is done. What remains is Step 76, which needs two Bangla speakers, not code. M6 was started with the owner's go-ahead: Steps 84–90 are built; Steps 91–95 (suggestions and "not enough data" everywhere) are next, and the owed on-phone checks above.
 
 Ask Hisab has no screen yet, by design: Steps 78–83 asked for the answers, not a place to type the question. A screen for it is not in the plan's M5 step list and would be building ahead of it.
 
 ## Not Allowed Right Now
 - **Reading or writing the held-out set.** Whoever writes the rules may not write, edit, choose or read those sentences before Step 108. This is the one rule in the project that a well-meaning shortcut would quietly destroy — including by having a model write them, which would be the same rule developer twice over.
-- Forecasting and the reorder engine, including `GET_LOW_STOCK`, `GET_PREDICTED_STOCKOUT` and `GET_REORDER` — M6, Step 90.
+- Co-occurrence and suggestions (Steps 91–94) until asked for: they are the rest of M6.
+- Choosing a final forecasting method from the Step 88 development series. They are a development set; the final comparison needs real series or a fresh seed, run once (Step 105).
 - Full security hardening (rate limiting, token rotation, threat testing) — still M7.
 
 ## Definition of Done for M5

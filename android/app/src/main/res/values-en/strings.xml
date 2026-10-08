@@ -234,4 +234,28 @@
     <string name="baki_undo_confirm">Yes, undo</string>
     <string name="baki_undone_label">Undone</string>
     <string name="baki_undone_notice">%1$s entry undone</string>
+
+    <!-- Ask Hisab: stock forecasts and what to buy (M6, Steps 89-90).
+         Same meaning as values/strings.xml, line for line. See the note there. -->
+    <string name="ask_reorder_buy">%1$s: buy %2$s %3$s.</string>
+    <string name="ask_reorder_none">%1$s: no need to buy right now.</string>
+    <string name="ask_line_current_stock">Current stock: %1$s %2$s</string>
+    <string name="ask_line_expected_demand">Expected demand in the next %1$s days: %2$s %3$s</string>
+    <string name="ask_line_safety_margin">Safety margin (%1$s%%): %2$s %3$s</string>
+    <string name="ask_line_rounded_up">Rounded up to a buyable amount: +%1$s %2$s</string>
+    <string name="ask_line_negative_stock">The records show %1$s %2$s, so it was counted as 0. Count the shelf to correct the stock.</string>
+    <string name="ask_stockout_already">%1$s: already out of stock.</string>
+    <string name="ask_stockout_in_days">%1$s: expected to run out in about %2$s days (around %3$s).</string>
+    <string name="ask_stockout_not_soon">%1$s: not expected to run out in the next %2$s days.</string>
+    <string name="ask_low_stock_header">Will not last the next %1$s days:</string>
+    <string name="ask_low_stock_item">%1$s: %2$s %3$s left — %4$s</string>
+    <string name="ask_low_stock_out">out of stock</string>
+    <string name="ask_low_stock_days">about %1$s days left</string>
+    <string name="ask_low_stock_later">may last beyond %1$s days</string>
+    <string name="ask_low_stock_none">Nothing is running low right now.</string>
+    <string name="ask_reorder_list_header">What to buy:</string>
+    <string name="ask_reorder_list_item">%1$s: %2$s %3$s</string>
+    <string name="ask_reorder_list_none">Nothing needs buying right now.</string>
+    <string name="ask_not_enough_data">%1$s: not enough sales history yet to predict (sold on %3$s of %2$s days). Current stock: %4$s %5$s.</string>
+    <string name="ask_not_enough_data_count">%1$s more products do not have enough sales history yet, so they were left out.</string>
 </resources>

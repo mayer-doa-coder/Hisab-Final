@@ -3,10 +3,12 @@ package com.hisab.app.domain.language
 import java.time.LocalDate
 
 /**
- * The fixed intent list (Steps 78–82). `GET_LOW_STOCK`,
- * `GET_PREDICTED_STOCKOUT` and `GET_REORDER` are deliberately absent: they
- * need forecasting and the reorder engine, which do not exist until M6, and
- * answering them now would mean inventing numbers.
+ * The fixed intent list: Steps 78–82, and the three that needed forecasting and
+ * the reorder engine, added in Step 90.
+ *
+ * `GET_LOW_STOCK`, `GET_PREDICTED_STOCKOUT` and `GET_REORDER` answer from a
+ * forecast, so they can answer "not enough data yet" where the first five
+ * cannot: a stock level is a fact, a prediction needs history.
  */
 enum class Intent {
     GET_STOCK,
@@ -14,6 +16,15 @@ enum class Intent {
     GET_OVERDUE,
     GET_TODAY_SALES,
     GET_PERIOD_SALES,
+
+    /** Which products will not last until a new order could arrive. No product named. */
+    GET_LOW_STOCK,
+
+    /** When one named product runs out. */
+    GET_PREDICTED_STOCKOUT,
+
+    /** What to buy: for one named product, or for the whole shop if none is named. */
+    GET_REORDER,
 
     /** Nothing this version can answer. Better said plainly than guessed at. */
     UNKNOWN,
@@ -119,6 +130,17 @@ object QuestionParser {
                 // "ajke koto sell hoise" with no period word still means today.
                 hasAny(tokens, SALES_WORDS) -> Intent.GET_TODAY_SALES
 
+                // "What to buy" before everything stock-shaped: "coke koyta kinbo"
+                // has a product and a "how many" word in it, and would otherwise
+                // be read as a plain stock question.
+                hasAny(tokens, BUY_WORDS) || isOrderingStock(tokens) -> Intent.GET_REORDER
+
+                // "When will it run out" needs a product; without one the same
+                // words ("kon kon jinis sesh hoye gese") ask which are running low.
+                product != null && isStockout(tokens) -> Intent.GET_PREDICTED_STOCKOUT
+
+                product == null && isLowStock(tokens) -> Intent.GET_LOW_STOCK
+
                 isStock(tokens, product) -> Intent.GET_STOCK
 
                 // A bare product name with a "how much" word and nothing else
@@ -130,7 +152,7 @@ object QuestionParser {
 
         return ParsedQuestion(
             intent = intent,
-            product = if (intent == Intent.GET_STOCK) product else null,
+            product = if (intent in PRODUCT_INTENTS) product else null,
             customer = if (intent == Intent.GET_CUSTOMER_BAKI) customer else null,
             period = if (intent == Intent.GET_PERIOD_SALES) period else null,
         )
@@ -144,6 +166,41 @@ object QuestionParser {
         // in as an overdue question.
         return saysOverdue || (asksWho && hasAny(tokens, BAKI_WORDS))
     }
+
+    /**
+     * "order" on its own is not buying. A shopkeeper says it about customers too —
+     * "ajke koto order asche" asks how many orders came in — and answering that with
+     * a list of what to buy would be a reply to a different question. It counts only
+     * together with something the shopkeeper does or gives: "order korbo", "order
+     * dite hobe", "অর্ডার করব".
+     */
+    private fun isOrderingStock(tokens: Set<String>): Boolean = hasAny(tokens, ORDER_WORDS) && hasAny(tokens, DOING_WORDS)
+
+    /**
+     * "chini kobe sesh hobe", "coke koto din cholbe": a time word together with a
+     * running-out or lasting word. Neither alone is enough — "kobe" is also
+     * "when" in a question about anything, and "sesh" is also how a due date
+     * ends — and a product has already been named by the caller.
+     *
+     * A product with a *low* word and no time word ("chini kom ache") is read the
+     * same way: asking whether it is low is asking how long it will last.
+     */
+    private fun isStockout(tokens: Set<String>): Boolean {
+        val saysRunsOut = hasAny(tokens, RUNOUT_WORDS) || hasAny(tokens, LAST_WORDS)
+        val asksWhen = hasAny(tokens, WHEN_WORDS) || (hasAny(tokens, AMOUNT_WORDS) && hasAny(tokens, DAY_WORDS))
+        return (saysRunsOut && asksWhen) || (hasAny(tokens, LOW_WORDS) && !hasAny(tokens, PRICE_WORDS))
+    }
+
+    /**
+     * "ki ki kom ache", "kon kon jinis sesh hoye asche": running low, asked of the
+     * whole shop. A "when" word rules it out: "pepsi kobe sesh hobe" is about one
+     * thing the shop does not stock, and answering it with a list of other things
+     * running low would be a reply to a different question.
+     */
+    private fun isLowStock(tokens: Set<String>): Boolean =
+        (hasAny(tokens, LOW_WORDS) || hasAny(tokens, RUNOUT_WORDS)) &&
+            !hasAny(tokens, WHEN_WORDS) &&
+            !hasAny(tokens, PRICE_WORDS)
 
     private fun isStock(
         tokens: Set<String>,
@@ -189,4 +246,79 @@ object QuestionParser {
     private val WEEK_WORDS = setOf("soptah", "সপ্তাহ", "week")
     private val MONTH_WORDS = setOf("mas", "মাস", "month")
     private val LAST_MONTH_WORDS = setOf("goto", "গত", "last")
+
+    // Step 90. Spellings are listed folded and unfolded where they differ, because
+    // the question is searched in both (see `parse`): "sesh" folds to "ses", and
+    // either may be what a keyword needs to meet.
+    private val BUY_WORDS =
+        setOf(
+            "kinbo",
+            "kinb",
+            "kinte",
+            "anbo",
+            "anb",
+            "ante",
+            "tulbo",
+            "tulte",
+            "reorder",
+            "buy",
+            "purchase",
+            "কিনব",
+            "কিনবো",
+            "কিনতে",
+            "কিনবে",
+            "কেনার",
+            "কিনি",
+            "আনব",
+            "আনবো",
+            "আনতে",
+            "তুলব",
+            "তুলবো",
+            "তুলতে",
+        )
+    private val LOW_WORDS =
+        setOf(
+            "kom",
+            "kome",
+            "low",
+            "furiye",
+            "furiyeche",
+            "furacche",
+            "furaye",
+            "ghatti",
+            "কম",
+            "কমে",
+            "ফুরিয়ে",
+            "ফুরোচ্ছে",
+            "ফুরাচ্ছে",
+            "ঘাটতি",
+        )
+    private val RUNOUT_WORDS =
+        setOf(
+            "sesh",
+            "ses",
+            "shesh",
+            "furabe",
+            "furab",
+            "furaibo",
+            "finish",
+            "finished",
+            "শেষ",
+            "ফুরাবে",
+            "ফুরোবে",
+            "ফুরাব",
+            "ফুরিয়ে",
+        )
+
+    // "order" counts as buying only with one of these; "dam" and friends rule "kom" out as
+    // being about stock ("kom dame chini" is sugar at a lower price).
+    private val ORDER_WORDS = setOf("order", "অর্ডার")
+    private val DOING_WORDS =
+        setOf("korbo", "korb", "korte", "dibo", "dib", "dite", "debo", "দিব", "দিবো", "দেব", "দেবো", "দিতে", "করব", "করবো", "করতে")
+    private val PRICE_WORDS = setOf("dam", "daam", "dor", "price", "rate", "দাম", "দর")
+    private val LAST_WORDS = setOf("cholbe", "cholb", "thakbe", "thakb", "চলবে", "থাকবে")
+    private val WHEN_WORDS = setOf("kobe", "kob", "kokhon", "কবে", "কখন", "kotodin", "কতদিন")
+    private val DAY_WORDS = setOf("din", "dine", "দিন", "দিনে")
+
+    private val PRODUCT_INTENTS = setOf(Intent.GET_STOCK, Intent.GET_PREDICTED_STOCKOUT, Intent.GET_REORDER)
 }

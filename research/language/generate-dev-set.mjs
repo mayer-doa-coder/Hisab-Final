@@ -155,6 +155,86 @@ add('karim er kache koto poisa baki', 'GET_CUSTOMER_BAKI', [customer('karim', 'k
 add('এই মাসে মোট কত বিক্রি হলো', 'GET_PERIOD_SALES', [period('এই মাসে', 'this_month')])
 add('kar kar baki meyad sesh', 'GET_OVERDUE', [])
 
+// ---------------------------------------------------------------------------
+// Step 90 — the three intents that needed forecasting and the reorder engine.
+// Appended after everything above so the ids of the 110 earlier examples do not
+// move. Same status as the rest of this file: a development set, written by the
+// person who writes the rules, so scoring well on it is a regression guard and
+// not evidence of accuracy (research/language/step83-measurements.md).
+
+// GET_LOW_STOCK — "what is running low": no product named
+const lowStock = [
+  'ki ki kom ache',
+  'kon kon jinis kom ache',
+  'ki ki furiye ashche',
+  'kon kon product sesh hoye ashche',
+  'low stock ki ki',
+  'kon jinis sesh hoye gese',
+  'কোন কোন জিনিস কম আছে',
+  'কী কী ফুরিয়ে আসছে',
+  'কোন কোন পণ্যের স্টক কম',
+  'কী কী শেষ হয়ে আসছে',
+  'কোন জিনিস শেষ হয়ে গেছে',
+  'কোন কোন product কম আছে',
+  'low stock এর জিনিস কোনগুলো',
+  'ki ki জিনিস ফুরিয়ে আসছে',
+  'কোন stock কম',
+  'stock sesh hoye ashche kon kon',
+]
+for (const text of lowStock) add(text, 'GET_LOW_STOCK', [])
+
+// GET_PREDICTED_STOCKOUT — "when will this one run out": a product is named
+for (const p of PRODUCTS) {
+  add(`${p.rm} kobe sesh hobe`, 'GET_PREDICTED_STOCKOUT', [product(p.rm, p.en)])
+  add(`${p.bn} কবে ফুরাবে`, 'GET_PREDICTED_STOCKOUT', [product(p.bn, p.en)])
+  add(`${p.rm} koto din cholbe`, 'GET_PREDICTED_STOCKOUT', [product(p.rm, p.en)])
+  add(`${p.bn} কতদিন চলবে`, 'GET_PREDICTED_STOCKOUT', [product(p.bn, p.en)])
+  add(`${p.bn} stock kobe sesh hobe`, 'GET_PREDICTED_STOCKOUT', [product(p.bn, p.en)])
+  add(`${p.rm} আর কত দিন চলবে`, 'GET_PREDICTED_STOCKOUT', [product(p.rm, p.en)])
+}
+add('coke kobe furabe', 'GET_PREDICTED_STOCKOUT', [product('coke', 'coke')])
+add('চিনি কবে শেষ হবে', 'GET_PREDICTED_STOCKOUT', [product('চিনি', 'sugar')])
+add('chini ar koto din cholbe', 'GET_PREDICTED_STOCKOUT', [product('chini', 'sugar')])
+add('oil kobe shesh hoye jabe', 'GET_PREDICTED_STOCKOUT', [product('oil', 'oil')])
+add('চালের স্টক আর কতদিন চলবে', 'GET_PREDICTED_STOCKOUT', [product('চাল', 'rice')])
+
+// GET_REORDER — "what should I buy": for one product, or for the whole shop
+const reorderAll = [
+  'ki ki kinte hobe',
+  'kon kon jinis kinbo',
+  'ki ki anbo',
+  'what to buy',
+  'কী কী কিনতে হবে',
+  'কোন কোন জিনিস আনতে হবে',
+  'আজ কী কিনব',
+  'mal tulte hobe ki ki',
+  'ki ki order korbo',
+  'আজ কী কী অর্ডার করব',
+  'কিনতে হবে এমন জিনিস কোনগুলো',
+  'kon kon jinis order dite hobe',
+]
+for (const text of reorderAll) add(text, 'GET_REORDER', [])
+for (const p of PRODUCTS) {
+  add(`${p.rm} koyta kinbo`, 'GET_REORDER', [product(p.rm, p.en)])
+  add(`${p.bn} কতটা কিনব`, 'GET_REORDER', [product(p.bn, p.en)])
+  add(`${p.rm} koto kinte hobe`, 'GET_REORDER', [product(p.rm, p.en)])
+  add(`${p.bn} কিনতে হবে কত`, 'GET_REORDER', [product(p.bn, p.en)])
+  add(`${p.bn} koyta anbo`, 'GET_REORDER', [product(p.bn, p.en)])
+}
+add('coke koyta order dibo', 'GET_REORDER', [product('coke', 'coke')])
+
+// Sentences that must NOT be read as one of the forecast questions. Found by trying
+// out sentences that were not in this set: "order" is also what a shopkeeper says about
+// customers' orders, and "kom" (less) also describes a price. Both used to be read as
+// forecast questions and answered with a made-up reply to a different question.
+const notForecastQuestions = [
+  'ajke koto order asche',
+  'customer order koto',
+  'kom dame chini',
+  'চিনির দাম কম',
+]
+for (const text of notForecastQuestions) add(text, 'UNKNOWN', [])
+
 writeFileSync(OUT, rows.map((row) => JSON.stringify(row)).join('\n') + '\n')
 
 const byIntent = {}

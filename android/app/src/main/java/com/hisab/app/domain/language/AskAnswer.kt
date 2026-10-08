@@ -2,6 +2,8 @@ package com.hisab.app.domain.language
 
 import com.hisab.app.domain.Money
 import com.hisab.app.domain.Quantity
+import com.hisab.app.domain.forecast.ReorderRecommendation
+import com.hisab.app.domain.forecast.StockoutOutlook
 
 /**
  * Which of the three the sentence is written in, by the fixed rule the
@@ -63,6 +65,22 @@ data class OverdueCustomer(
     val amount: Money,
 )
 
+/** One product in a "running low" list: how much is left and when it is expected to be gone. */
+data class LowStockItem(
+    val productName: String,
+    val unit: String,
+    val stock: Quantity,
+    val outlook: StockoutOutlook,
+)
+
+/** One product in a "what to buy" list, with the whole recommendation behind its quantity. */
+data class ReorderItem(
+    val productName: String,
+    val unit: String,
+    val recommendation: ReorderRecommendation,
+    val outlook: StockoutOutlook,
+)
+
 /**
  * The facts of an answer, with no words in them.
  *
@@ -95,6 +113,51 @@ sealed interface AskAnswer {
     data class PeriodSales(
         val period: Period,
         val total: Money,
+    ) : AskAnswer
+
+    /**
+     * Products that will not last until a new order could arrive, most urgent
+     * first. [notEnoughData] products were left out because their history is too
+     * short to say, and are counted so the omission is visible rather than silent.
+     */
+    data class LowStock(
+        val items: List<LowStockItem>,
+        val notEnoughData: Int,
+        val leadTimeDays: Int,
+    ) : AskAnswer
+
+    /** When one product runs out. [stock] is as the ledger counts it. */
+    data class PredictedStockout(
+        val productName: String,
+        val unit: String,
+        val stock: Quantity,
+        val outlook: StockoutOutlook,
+    ) : AskAnswer
+
+    /** What to buy of one product, with the arithmetic that produced it. */
+    data class Reorder(
+        val productName: String,
+        val unit: String,
+        val recommendation: ReorderRecommendation,
+    ) : AskAnswer
+
+    /** What to buy across the shop: only products that need something, most urgent first. */
+    data class ReorderList(
+        val items: List<ReorderItem>,
+        val notEnoughData: Int,
+    ) : AskAnswer
+
+    /**
+     * A forecast was asked for and there is too little history to make one. The
+     * answer says so, with what was counted, instead of a number made up to fill
+     * the gap. [stock] is still known, because it is a fact and not a forecast.
+     */
+    data class NotEnoughData(
+        val productName: String,
+        val unit: String,
+        val stock: Quantity,
+        val daysObserved: Int,
+        val demandDays: Int,
     ) : AskAnswer
 
     /** The question named something the shop does not have. */

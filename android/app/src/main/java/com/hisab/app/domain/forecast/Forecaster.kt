@@ -50,6 +50,7 @@ enum class ForecastFamily(
     TSB("tsb"),
     ADIDA("adida"),
     COMBINATION("combination"),
+    SELECTOR("profile_select"),
 }
 
 /** How much history the answer rests on. Step 95 turns this into words. */

@@ -1,6 +1,6 @@
 # Forecasting methods — the candidate catalogue (RQ4, Steps 85–87)
 
-This is the list of methods the Step 88 walk-forward comparison will run, why each is on it, and what was left off. It is written **before** any comparison has been run. No method below has been scored, and nothing here claims a winner — which method is best on this project's shops is Step 88's measurement, under the metrics frozen in `docs/RESEARCH_PLAN.md`.
+This is the list of methods the Step 88 walk-forward comparison will run, why each is on it, and what was left off. The catalogue and its settings were fixed **before** the Step 88 comparison was run. The comparison has since been run on synthetic development data: its protocol is `PROTOCOL.md`, its numbers are `results/step88-synthetic-v1/`, and the reading of them is `results/step88-synthetic-v1/ANALYSIS.md`. Nothing here claims a winner for real shops. Which method is best on this project's shops is RQ4's question, and the Step 88 data cannot answer it (the series were designed by the person who wrote the methods).
 
 Code: `android/app/src/main/java/com/hisab/app/domain/forecast/`. The one list the comparison reads is `ForecastMethods.all()`, so a method added to the code is in the table automatically.
 
@@ -35,12 +35,13 @@ Settings are starting points chosen from the literature and from what each formu
 | `tsb(a=0.1,b=0.05)` | no | 16 B | Smooths demand *probability* every day, so forecasts decay for a product that has stopped selling. Croston cannot do this. |
 | `adida(ewma,m=7)` | no | 20 B | Temporal aggregation: forecast weekly totals, spread over seven days. Removes the zero days that make daily intermittent series hard. |
 | `combination(ma+ewma+sba)` | no | 84 B | Equal-weight mean of three members. No weights to fit, so nothing to overfit on a short history. |
+| `profile_select(ewma/sba)` | no | 52 B | Chooses per product from its own demand shape: EWMA for smooth and erratic series, SBA for intermittent and lumpy ones (the Syntetos-Boylan-Croston mapping, fixed from the literature and not fitted to results). |
 
-Every method fits in at most 224 bytes. All twelve together come to 580 bytes per product, about 116 KB for a 200-product shop; `ForecastMethodTest` asserts the ceiling (under 512 KB), not the exact figure. The comparison is therefore about accuracy per byte, not about whether a method fits at all.
+Every method fits in at most 224 bytes. All thirteen together come to 632 bytes per product, about 126 KB for a 200-product shop; `ForecastMethodTest` asserts the ceiling (under 512 KB), not the exact figure. The comparison is therefore about accuracy per byte, not about whether a method fits at all.
 
 ## Research candidates added beyond the PRD's required list
 
-The PRD requires five families (naive, moving average, EWMA, seasonal naive, a Croston-family method). Six more are added, each because it fixes one named, visible failure of a required method:
+The PRD requires five families (naive, moving average, EWMA, seasonal naive, a Croston-family method). Seven more are added, each because it fixes one named, visible failure of a required method:
 
 - **Running mean** — the cheapest possible state, and the limit EWMA approaches as α → 0.
 - **Seasonal EWMA** — seasonal naive's weakness is one odd Friday copied into every future Friday.
@@ -48,6 +49,7 @@ The PRD requires five families (naive, moving average, EWMA, seasonal naive, a C
 - **TSB** — Croston never notices a product has died; this is the common case of a product still on the shelf that nobody has bought in three weeks.
 - **ADIDA** — daily intermittent demand is mostly zeros; the same history in weekly buckets is not.
 - **Equal-weight combination** — the one entry that costs the sum of its members, so it has to earn that in Step 88.
+- **Profile selector** — neither EWMA nor SBA is right for every product on one shelf; the selector picks per product at the cost of one pass over the history. *Step 88 result: it did not earn its place at this fixed mapping* (mean MAE rank 8.4 of 13, worse than both parts), mainly because MAE rates SBA below EWMA on intermittent series and because a product that has stopped selling looks intermittent. See `ANALYSIS.md`.
 
 ## Deliberately left off
 
