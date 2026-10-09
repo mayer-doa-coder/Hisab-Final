@@ -17,6 +17,7 @@ import com.hisab.app.data.sale.SaleEntity
 import com.hisab.app.data.sale.SaleItemEntity
 import com.hisab.app.data.stock.StockMovementDao
 import com.hisab.app.data.stock.StockMovementEntity
+import com.hisab.app.data.suggest.SuggestionDao
 import com.hisab.app.data.sync.SyncMetadataDao
 import com.hisab.app.data.sync.SyncMetadataEntity
 import com.hisab.app.data.sync.SyncOutboxDao
@@ -58,6 +59,12 @@ abstract class HisabDatabase : RoomDatabase() {
      * follows, D020) — so adding it does not change the schema version.
      */
     abstract fun demandDao(): DemandDao
+
+    /**
+     * Reads sales as baskets for "bought together" suggestions (Step 91). No table of
+     * its own either: suggestions are derived from the sale ledger, never stored.
+     */
+    abstract fun suggestionDao(): SuggestionDao
 
     companion object {
         const val DATABASE_NAME = "hisab.db"

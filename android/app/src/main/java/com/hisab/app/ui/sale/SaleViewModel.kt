@@ -10,6 +10,7 @@ import com.hisab.app.data.product.sellingPrice
 import com.hisab.app.data.sale.SaleRepository
 import com.hisab.app.data.stock.ProductWithStock
 import com.hisab.app.data.stock.StockRepository
+import com.hisab.app.data.suggest.SuggestionRepository
 import com.hisab.app.domain.EntityId
 import com.hisab.app.domain.Money
 import com.hisab.app.domain.Quantity
@@ -19,6 +20,8 @@ import com.hisab.app.domain.calculateCartTotal
 import com.hisab.app.domain.calculateLineTotal
 import com.hisab.app.domain.normalizeDigits
 import com.hisab.app.domain.stockShortfall
+import com.hisab.app.domain.suggest.Cooccurrence
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -27,6 +30,8 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.time.Clock
 import java.time.DateTimeException
 import java.time.LocalDate
 import java.time.format.DateTimeParseException
@@ -70,6 +75,8 @@ data class SaleUiState(
      * rotation would be no confirmation at all.
      */
     val justSaved: SalePayment? = null,
+    /** What to offer next to the cart (Step 93). Empty while the history is read, and whenever nothing is worth offering. */
+    val suggestions: SuggestionPanel = SuggestionPanel.EMPTY,
     /** False until the first read comes back, so "add a product first" isn't shown before anything is known. */
     val loaded: Boolean = false,
 ) {
@@ -97,11 +104,21 @@ data class SaleUiState(
 @OptIn(ExperimentalCoroutinesApi::class)
 class SaleViewModel(
     application: Application,
+    // Passed in so a test can give it an in-memory database and a fixed clock.
+    private val database: HisabDatabase,
+    clock: Clock,
 ) : AndroidViewModel(application) {
-    private val database = HisabDatabase.get(application)
-    private val sales = SaleRepository(database)
-    private val stock = StockRepository(database)
+    /**
+     * The constructor the default view-model factory looks for: it builds a view model by
+     * finding one that takes only the `Application`. Losing this would not fail the build and
+     * would crash the New Sale screen the moment it opened (`SaleViewModelConstructorTest`).
+     */
+    constructor(application: Application) : this(application, HisabDatabase.get(application), Clock.systemUTC())
+
+    private val sales = SaleRepository(database, clock)
+    private val stock = StockRepository(database, clock)
     private val customers = CustomerRepository(database)
+    private val suggestionHistory = SuggestionRepository(database, clock)
 
     private val query = MutableStateFlow("")
 
@@ -114,6 +131,22 @@ class SaleViewModel(
     private val dueDateError = MutableStateFlow(false)
     private val justSaved = MutableStateFlow<SalePayment?>(null)
 
+    /**
+     * What has been sold together, read from the sale history. Null until the first read
+     * comes back, and read again after every sale so the sale just made counts.
+     */
+    private val history = MutableStateFlow<Cooccurrence?>(null)
+
+    /** Suggestions the shopkeeper has dismissed in this sale. Forgotten when the sale is saved. */
+    private val dismissed = MutableStateFlow<Set<String>>(emptySet())
+
+    /**
+     * Every product that can be sold, whatever is typed in the search box. The picker shows
+     * the filtered list; the cart and the suggestions must not, or typing a search would make
+     * the cart's other lines vanish from the screen and from the sale.
+     */
+    private val catalogue = stock.observeProductsWithStock()
+
     private val errors = combine(customerError, dueDateError) { nameBad, dueBad -> nameBad to dueBad }
 
     private val form =
@@ -121,29 +154,69 @@ class SaleViewModel(
             FormState(currentPayment, name, due, bad.first, bad.second, saved)
         }
 
-    val uiState: StateFlow<SaleUiState> =
-        query
-            .flatMapLatest { currentQuery -> stock.observeProductsWithStock(currentQuery) }
-            .combine(cart) { available, lines -> available to lines }
-            .combine(query) { (available, lines), currentQuery -> Triple(available, lines, currentQuery) }
-            .combine(form) { (available, lines, currentQuery), formState ->
-                SaleUiState(
-                    query = currentQuery,
-                    available = available,
-                    lines = toCartLines(available, lines),
-                    payment = formState.payment,
-                    customerName = formState.customerName,
-                    dueDateText = formState.dueDateText,
-                    customerError = formState.customerError,
-                    dueDateError = formState.dueDateError,
-                    justSaved = formState.justSaved,
-                    loaded = true,
-                )
-            }.stateIn(
-                scope = viewModelScope,
-                started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS),
-                initialValue = SaleUiState(),
+    /**
+     * The cart, the form and the product list, as one emission. The suggestions are worked out
+     * from the lines in this very emission (below), never from a flow of their own: with a
+     * separate flow, the cart could already hold a product while the strip still offered it for
+     * a moment, and one more tap would have added it twice.
+     */
+    private val screen =
+        combine(
+            query.flatMapLatest { currentQuery -> stock.observeProductsWithStock(currentQuery) },
+            catalogue,
+            cart,
+            query,
+            form,
+        ) { available, everything, lines, currentQuery, formState ->
+            ScreenDraft(
+                state =
+                    SaleUiState(
+                        query = currentQuery,
+                        available = available,
+                        lines = toCartLines(everything, lines),
+                        payment = formState.payment,
+                        customerName = formState.customerName,
+                        dueDateText = formState.dueDateText,
+                        customerError = formState.customerError,
+                        dueDateError = formState.dueDateError,
+                        justSaved = formState.justSaved,
+                        loaded = true,
+                    ),
+                sellable = everything.map { it.product },
             )
+        }
+
+    val uiState: StateFlow<SaleUiState> =
+        combine(screen, history, dismissed) { draft, model, gone ->
+            draft.state.copy(
+                suggestions = suggestionPanelFor(model, draft.state.lines.map { it.product.id }, draft.sellable, gone),
+            )
+        }.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS),
+            initialValue = SaleUiState(),
+        )
+
+    private data class ScreenDraft(
+        val state: SaleUiState,
+        val sellable: List<ProductEntity>,
+    )
+
+    init {
+        refreshSuggestions()
+    }
+
+    /** Reads the sale history again. Off the main thread: it can be a few thousand lines. */
+    private fun refreshSuggestions() {
+        viewModelScope.launch {
+            history.value = withContext(Dispatchers.Default) { suggestionHistory.load() }
+        }
+    }
+
+    /** Hides one suggestion for the rest of this sale. Adding it is the screen's ordinary [addOne]. */
+    fun dismissSuggestion(productId: String) {
+        dismissed.value = dismissed.value + productId
+    }
 
     /**
      * The cart, in the order products were added, with each line's current
@@ -238,6 +311,7 @@ class SaleViewModel(
                 sales.recordCashSale(lines)
                 clearCart()
                 justSaved.value = SalePayment.CASH
+                refreshSuggestions()
                 onSaved(SalePayment.CASH)
             }
             return
@@ -270,6 +344,7 @@ class SaleViewModel(
             sales.recordCreditSale(EntityId(customer.id), lines, due)
             clearCart()
             justSaved.value = SalePayment.CREDIT
+            refreshSuggestions()
             onSaved(SalePayment.CREDIT)
         }
     }
@@ -282,6 +357,7 @@ class SaleViewModel(
         dueDateError.value = false
         payment.value = SalePayment.CASH
         query.value = ""
+        dismissed.value = emptySet()
     }
 
     private data class FormState(

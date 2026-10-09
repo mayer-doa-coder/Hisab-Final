@@ -273,4 +273,13 @@
     <string name="ask_reorder_list_none">এখন কিছু কেনার দরকার নেই।</string>
     <string name="ask_not_enough_data">%1$s: পূর্বাভাস দেওয়ার মতো বিক্রির তথ্য এখনো নেই (%2$s দিনের মধ্যে %3$s দিন বিক্রি হয়েছে)। এখন স্টক: %4$s %5$s।</string>
     <string name="ask_not_enough_data_count">আরও %1$s টি পণ্যের বিক্রির তথ্য যথেষ্ট নয়, তাই সেগুলো ধরা হয়নি।</string>
+
+    <!-- New Sale suggestions and "not sold yet" (M6, Steps 93 and 95).
+         Same meaning as the English file, line for line. The product name in the
+         two content descriptions is the shop's own text. -->
+    <string name="sale_suggest_title">প্রায়ই একসাথে কেনা হয়</string>
+    <string name="sale_suggest_add_desc">%1$s যোগ করুন</string>
+    <string name="sale_suggest_dismiss_desc">%1$s সরিয়ে দিন</string>
+    <string name="sale_suggest_not_enough_history">আরও বিক্রির তথ্য জমলে এখানে পরামর্শ দেখা যাবে।</string>
+    <string name="ask_not_sold_yet">%1$s: এখনো বিক্রি হয়নি, তাই পূর্বাভাস দেওয়ার মতো কিছু নেই। এখন স্টক: %2$s %3$s।</string>
 </resources>

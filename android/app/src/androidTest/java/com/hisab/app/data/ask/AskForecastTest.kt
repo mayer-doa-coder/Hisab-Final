@@ -211,6 +211,26 @@ class AskForecastTest {
             assertEquals(units(7.0), answer.stock)
         }
 
+    @Test
+    fun aProductThatWasNeverSoldIsToldSoInPlainWordsInBothLanguages(): Unit =
+        runBlocking {
+            // Created here and not in the shared set-up, so the other tests' "N products left out" counts stay as they are.
+            create("লবণ", listOf("lobon"), ProductUnits.PIECE)
+
+            val stockout = ask.ask("lobon kobe sesh hobe", today) as AskAnswer.NotEnoughData
+            val reorder = ask.ask("lobon koyta kinbo", today) as AskAnswer.NotEnoughData
+
+            // Nothing was observed at all, which is different from "sold on 0 of 0 days".
+            assertEquals(0, stockout.daysObserved)
+            assertEquals(stockout, reorder)
+
+            val english = text(stockout, AnswerLanguage.ENGLISH)
+            val bangla = text(stockout, AnswerLanguage.BANGLA)
+            assertTrue(english, english.contains("not sold yet"))
+            assertFalse(english, english.contains("0 of 0"))
+            assertTrue(bangla, bangla.contains("এখনো বিক্রি হয়নি"))
+        }
+
     // ---- GET_REORDER ------------------------------------------------------------------------
 
     @Test

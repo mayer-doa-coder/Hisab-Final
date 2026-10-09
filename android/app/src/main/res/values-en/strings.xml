@@ -258,4 +258,12 @@
     <string name="ask_reorder_list_none">Nothing needs buying right now.</string>
     <string name="ask_not_enough_data">%1$s: not enough sales history yet to predict (sold on %3$s of %2$s days). Current stock: %4$s %5$s.</string>
     <string name="ask_not_enough_data_count">%1$s more products do not have enough sales history yet, so they were left out.</string>
+
+    <!-- New Sale suggestions and "not sold yet" (M6, Steps 93 and 95).
+         Same meaning as values/strings.xml, line for line. -->
+    <string name="sale_suggest_title">Often bought together</string>
+    <string name="sale_suggest_add_desc">Add %1$s</string>
+    <string name="sale_suggest_dismiss_desc">Dismiss %1$s</string>
+    <string name="sale_suggest_not_enough_history">Suggestions will appear here once there is more sales history.</string>
+    <string name="ask_not_sold_yet">%1$s: not sold yet, so there is nothing to predict from. Current stock: %2$s %3$s.</string>
 </resources>

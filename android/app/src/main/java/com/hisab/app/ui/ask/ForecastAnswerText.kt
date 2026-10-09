@@ -209,8 +209,13 @@ object ForecastAnswerText {
             return headline + "\n" + text(R.string.ask_line_current_stock, amount(answer.stock), unit(answer.unit))
         }
 
-        fun notEnoughData(answer: AskAnswer.NotEnoughData): String =
-            text(
+        fun notEnoughData(answer: AskAnswer.NotEnoughData): String {
+            // Never sold at all is a different sentence from "too little so far": "sold on 0 of 0
+            // days" reads like a fault, and the plain truth is that there is nothing to go on yet.
+            if (answer.daysObserved == 0) {
+                return text(R.string.ask_not_sold_yet, answer.productName, amount(answer.stock), unit(answer.unit))
+            }
+            return text(
                 R.string.ask_not_enough_data,
                 answer.productName,
                 whole(answer.daysObserved),
@@ -218,5 +223,6 @@ object ForecastAnswerText {
                 amount(answer.stock),
                 unit(answer.unit),
             )
+        }
     }
 }

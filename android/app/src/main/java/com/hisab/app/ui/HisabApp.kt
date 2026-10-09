@@ -294,6 +294,7 @@ private fun NewSaleRoute(onBack: () -> Unit) {
         onRemoveOne = { line -> viewModel.removeOne(line.product.id, line.product.unit) },
         onSetQuantity = { line, quantity -> viewModel.setQuantity(line.product.id, quantity) },
         onRemoveLine = { line -> viewModel.removeLine(line.product.id) },
+        onDismissSuggestion = viewModel::dismissSuggestion,
         onPaymentChange = viewModel::onPaymentChange,
         onCustomerNameChange = viewModel::onCustomerNameChange,
         onDueDateChange = viewModel::onDueDateChange,

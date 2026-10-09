@@ -2,7 +2,7 @@
 
 M5 — Ask Hisab (Steps 73–83) — **all the code is done and checked; Step 76 alone is outstanding, and waits on a writer who is not the rule developer**
 
-**M6 — Smart Extras is under way: Steps 84–90 are built and checked on the laptop; the on-phone checks for Steps 88–90 are owed (phone was not connected). Steps 91–95 (suggestions, and "not enough data" everywhere) are not started.** See "M6 — Steps 88–90" below.
+**M6 — Smart Extras is done (Steps 84–95). Every step is built and every check passed, on the laptop and on the phone, 2026-10-08. See "M6 — Steps 91–95" below for what is verified and for the caveats that remain.**
 
 M4 (Steps 62–72) is complete: every step built and checked, 2026-09-28.
 
@@ -38,6 +38,39 @@ Two Kotlin traps worth knowing, both hit here: ড়, ঢ় and য় are eac
 **Checked on 2026-09-28:** `ci-local.sh` 13/13, exit 0 — **256 Android unit tests across 28 classes** (up from 211 before M5), 319 server tests, 0 failures; Android lint 0 issues; Spotless, ESLint, Prettier and the localization parity check clean.
 
 **A third shared-database test defect, found and fixed here.** `the sale list is newest first` asserted where its two sales sat in a list capped at `LIMIT 500`. The test database is kept between runs and has reached 541 sales in shop-1, 511 of them newer than the 2026-01-01 dates the test used — so both of its sales fell off the page, `indexOf` returned -1 for each, and `-1 < -1` failed for a reason that had nothing to do with ordering. It now dates its sales recently and asserts only their order relative to each other. This is the same family as M3's fixed-id tests and M4's `HisabDatabaseTest`: a test that quietly assumes a small or clean database and passes until it is neither.
+
+## M6 — Steps 91–95: suggestions, and "not enough data" everywhere (done: checked on the laptop and on the phone)
+
+- **Step 91 — the co-occurrence counter.** `domain/suggest/Cooccurrence.kt`: `computeCooccurrence(lines)` over `(sale_id, product_id)` pairs gives how many sales each product is in and how many each pair shares. `data/suggest/SuggestionDao.kt` reads the pairs from Room, leaving out a sale that was undone and the reversal that undid it. **Check passed on the laptop and on the phone:** a known pair (12 of 15 Biryani sales include Coke) shows a count of 12, and the counts for a four-sale history match a hand count. `SuggestionRepositoryTest` (8, on the phone) covers what only a database can: a sale that was undone and its reversal are both left out, the 90-day window, another shop's sales, cash and credit, and that reading writes nothing.
+- **Step 92 — the ranking.** `domain/suggest/ComplementRanking.kt`: `rankComplements(model, cart, topN, ...)`, association-rule scoring (shared sales, confidence, lift, each with a minimum) with a plain frequency ranking kept as the RQ5 baseline. **Check passed on the laptop:** the known pair ranks first with its counts (60% confidence, lift 1.8), and the order is the same however the sales or the cart arrive.
+- **Step 93 — the New Sale screen.** `ui/sale/SuggestionStrip.kt`, `SaleSuggestions.kt` and `SaleViewModel`: up to three chips above the product list and the cart, tap to add, a button to dismiss, the whole cart as the basis, the history re-read after every sale. **Check passed on the phone.** `SaleSuggestionFlowTest` (8): through the real view model and a real database, adding a Biryani shows the Coke that went with it in 75% of Biryani sales, tapping it puts it in the sale and takes it off the strip, a dismissal lasts for that sale only, and a sale just made counts toward the next suggestion. `SuggestionStripTest` (6): the strip's add and dismiss buttons, in both languages. Plus the panel logic (13 unit tests).
+- **Step 94 — the edge cases.** Always together is suggested (100%, lift 5); never together is not; a brand-new product shows nothing, no strip and no message. **Check passed on the laptop and on the phone** (the brand-new-product case runs through the real view model in `SaleSuggestionFlowTest`).
+- **Step 95 — "not enough data" everywhere.** Forecasting and reorder (one path, `InventoryAdvisor`), suggestions (a typed `NotEnoughData` with a reason) and Ask Hisab (a plain sentence, with its own wording for a product never sold) all refuse to guess. `NotEnoughDataTest` runs one almost-no-history product through forecasting, reorder and suggestions together, and checks that every method in the catalogue is refused by the advisor's gate. **Check passed on the laptop**; the Ask sentences for a never-sold product are an on-phone test (`AskForecastTest`, 18 tests), **passed on the phone** in both languages.
+
+Decisions: D053.
+
+**Verified on 2026-10-08, on the final code (read from fresh result files):**
+- **Phone (Galaxy A15, Android 16), the whole on-device suite: 281 tests across 37 classes, 0 failed, 0 errors, 0 skipped**, with the dev server and `adb reverse` up so the sync end-to-end tests really ran. The tests new in Steps 91–95 are in it: three new classes, `SuggestionRepositoryTest` 8, `SaleSuggestionFlowTest` 8 and `SuggestionStripTest` 6 (22 tests), plus one new case in `AskForecastTest` (18 in all). Hisab was not installed on the phone, so no app data was at risk.
+- **Laptop:** Android unit tests **482 run, 0 failed, 0 skipped, 49 classes** (420 before this batch), forced to re-run. Debug APK and test APK build and dex. Localization (235 keys, Bangla and English in step), JUnit method-signature and Room schema checks (no schema change; the new DAO defines no table), Spotless, and lint (one informational note, on the existing `sync_status_pending` string). **Server: 319 tests, 0 failed**, plus build, lint (exit 0) and format check.
+- **A mutation check of the 60 new counting, ranking, panel and Step 95 unit tests:** five deliberate breakages of the code were each caught.
+
+**Defects the phone found in this batch's own code, both fixed and re-verified on the phone:**
+1. **The suggestion strip could briefly offer a product that was already in the cart.** The suggestions came from a flow of their own, joined to the cart afterwards, so for a moment the cart held the product while the strip still showed it; one more tap would have added it twice. Found by `SaleSuggestionFlowTest`. The suggestions are now computed from the same emission as the cart lines, so they cannot disagree.
+2. **A test-teardown defect:** the test closed its database while the view model's query was still alive (it stays alive for five seconds after the last collector leaves), which threw on a background thread and ended the whole run after two tests. The test now stops the view model before closing the database. The app never closes its database; this affected only the test.
+
+**The New Sale search bug is confirmed on the phone, not just by reading.** The cart's lines were built from the search-filtered product list. With the old behaviour put back for one run, typing a search that did not match a product already in the cart dropped that line (2 lines became 1), and it would have dropped it from the total and the saved sale as well. With the fix, the same test passes. The file was restored byte for byte afterwards.
+
+**Checked and not changed:** `HomeScreenTest.languageButtonSwitchesToEnglishAndBack` is a flaky test that failed in 2 of 4 runs on the committed baseline before any of this work. It passed in the final full run.
+
+**Still not done or not known:**
+- **GitHub CI has not been read.** Commits `62143c2` (Steps 84–87) and `57c6e25` (Steps 88–90) are in git, and none of Steps 91–95 is committed. Nothing in this batch has run on CI.
+- **The server job was run step by step, not as one `scripts/ci-local.sh` run**, because that script is longer than the tool's 10-minute limit.
+- **The low-end reference device (D028) has not been used for anything.** Every phone figure in M6 is the Galaxy A15's.
+- **Nothing here says anything about real shops.** The forecasting results are on synthetic series designed by the person who wrote the methods, and the suggestion thresholds below have never met a real shop's sales.
+
+**Every threshold in the suggestions is an unvalidated assumption** (20 sales in the shop, 5 in the cart product, 3 shared, 20% confidence, lift 1.2, a window of 90 days, 3 chips shown). RQ5's held-out evaluation, not yet built, is what should set them. The time-decayed variant, the held-out evaluation itself, and any settings screen are not built; they belong to later steps.
+
+**Is M6 done?** Yes, by the plan's own definition ("Steps 84–95 all check out"): Steps 84–90 passed their checks on the laptop and the phone earlier, and Steps 91–95 now have too. What stays open is listed above and is about CI, the low-end device and real-shop data, not about whether the steps work.
 
 ## M6 — Steps 88–90: the comparison, the reorder engine, and three new questions (built and checked, laptop and phone)
 
@@ -293,13 +326,14 @@ Done so far:
   - **CI now builds the real APK** (`assembleDebug`) and compiles the on-phone tests, instead of only compiling Kotlin.
 
 ## Allowed Right Now
-Every step of M5 that can be done without other people is done. What remains is Step 76, which needs two Bangla speakers, not code. M6 was started with the owner's go-ahead: Steps 84–90 are built; Steps 91–95 (suggestions and "not enough data" everywhere) are next, and the owed on-phone checks above.
+Every step of M5 that can be done without other people is done. What remains is Step 76, which needs two Bangla speakers, not code. M6 is done (Steps 84–95). M7 (Step 96 on: the security checklist, threat tests, backup and restore) is next and needs the owner's go-ahead.
 
 Ask Hisab has no screen yet, by design: Steps 78–83 asked for the answers, not a place to type the question. A screen for it is not in the plan's M5 step list and would be building ahead of it.
 
 ## Not Allowed Right Now
 - **Reading or writing the held-out set.** Whoever writes the rules may not write, edit, choose or read those sentences before Step 108. This is the one rule in the project that a well-meaning shortcut would quietly destroy — including by having a model write them, which would be the same rule developer twice over.
-- Co-occurrence and suggestions (Steps 91–94) until asked for: they are the rest of M6.
+- M7 (security checklist, threat tests, backup and restore) until asked for.
+- Evaluating suggestions (RQ5): the held-out comparison of frequency, association and a time-decayed variant belongs to the research milestones, not to M6.
 - Choosing a final forecasting method from the Step 88 development series. They are a development set; the final comparison needs real series or a fresh seed, run once (Step 105).
 - Full security hardening (rate limiting, token rotation, threat testing) — still M7.
 

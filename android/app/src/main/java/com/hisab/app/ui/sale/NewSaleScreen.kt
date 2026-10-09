@@ -80,6 +80,7 @@ fun NewSaleScreen(
     onRemoveOne: (CartLine) -> Unit,
     onSetQuantity: (CartLine, Quantity) -> Unit,
     onRemoveLine: (CartLine) -> Unit,
+    onDismissSuggestion: (productId: String) -> Unit,
     onPaymentChange: (SalePayment) -> Unit,
     onCustomerNameChange: (String) -> Unit,
     onDueDateChange: (String) -> Unit,
@@ -133,6 +134,16 @@ fun NewSaleScreen(
                         .padding(horizontal = 14.dp, vertical = 10.dp),
             )
         }
+
+        // Above both the picker and the cart, so it is in view whichever is showing. Tapping a
+        // suggestion is the ordinary add-one, which is also what makes it disappear from the
+        // list: it is in the cart now.
+        SuggestionStrip(
+            panel = state.suggestions,
+            onAdd = onAddOne,
+            onDismiss = onDismissSuggestion,
+            modifier = Modifier.padding(bottom = 12.dp),
+        )
 
         Box(modifier = Modifier.weight(1f)) {
             when {
